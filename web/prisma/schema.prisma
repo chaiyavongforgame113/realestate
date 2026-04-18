@@ -1,0 +1,558 @@
+// Estate AI - Prisma schema
+// Dev uses SQLite for zero-setup. For production, switch datasource to PostgreSQL.
+// Array fields are stored as Json strings to keep SQLite compatibility (PG can use String[]).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users & Auth ----------
+
+enum UserRole {
+  user
+  agent
+  admin
+}
+
+enum UserStatus {
+  pending_verification
+  active
+  suspended
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  passwordHash    String
+  role            UserRole   @default(user)
+  status          UserStatus @default(active)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  profile            UserProfile?
+  agentProfile       AgentProfile?
+  agentApplications  AgentApplication[] @relation("ApplicantApplications")
+  reviewedApplications AgentApplication[] @relation("ReviewerApplications")
+  listings           Listing[]
+  reviewedListings   Listing[] @relation("ListingReviewer")
+  enquiries          Enquiry[] @relation("EnquiryUser")
+  favorites          Favorite[]
+  refreshTokens      RefreshToken[]
+  searchSessions     SearchSession[]
+  adminActions       AdminAction[]
+  notifications      Notification[]
+  savedSearches      SavedSearch[]
+
+  @@index([role, status])
+}
+
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  avatarUrl String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ---------- Agent ----------
+
+enum AgentApplicationStatus {
+  pending_review
+  approved
+  rejected
+  info_requested
+}
+
+model AgentApplication {
+  id                  String                 @id @default(cuid())
+  userId              String
+  fullName            String
+  companyName         String?
+  phone               String
+  experienceYears     Int
+  expertiseAreas      String // JSON string array
+  licenseDocumentUrl  String?
+  idDocumentUrl       String?
+  status              AgentApplicationStatus @default(pending_review)
+  adminNote           String?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  user     User  @relation("ApplicantApplications", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReviewerApplications", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model AgentProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  displayName    String
+  bio            String?
+  profileImageUrl String?
+  verifiedAt     DateTime?
+  totalListings  Int      @default(0)
+  rating         Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Listings ----------
+
+enum ListingType {
+  sale
+  rent
+}
+
+enum PropertyType {
+  condo
+  house
+  townhouse
+  land
+  commercial
+}
+
+enum ListingStatus {
+  draft
+  pending_review
+  published
+  rejected
+  revision_requested
+  unavailable
+  sold
+  rented
+}
+
+enum PriceUnit {
+  total
+  per_month
+  per_sqm
+}
+
+enum Furnishing {
+  fully_furnished
+  partially_furnished
+  unfurnished
+}
+
+model Listing {
+  id               String        @id @default(cuid())
+  agentId          String
+  status           ListingStatus @default(draft)
+  listingType      ListingType
+  propertyType     PropertyType
+
+  // Basic
+  title            String
+  description      String
+  price            Float
+  priceUnit        PriceUnit     @default(total)
+
+  // Physical
+  usableArea       Float
+  landArea         Float?
+  bedrooms         Int
+  bathrooms        Int
+  parkingSpaces    Int           @default(0)
+  floor            Int?
+  totalFloors      Int?
+  furnishing       Furnishing    @default(unfurnished)
+
+  // Location
+  projectName      String?
+  district         String
+  province         String
+  latitude         Float
+  longitude        Float
+  addressDetail    String?
+
+  // Nearby transit
+  nearestBts           String?
+  nearestBtsDistance   Int?
+  nearestMrt           String?
+  nearestMrtDistance   Int?
+  nearestArl           String?
+  nearestArlDistance   Int?
+
+  // Media
+  coverImageUrl    String
+  videoUrl         String?
+  virtualTourUrl   String?
+
+  // JSON arrays (amenities, lifestyle_tags)
+  amenities        String // JSON string array
+  lifestyleTags    String // JSON string array
+
+  // Admin
+  adminNote        String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  publishedAt      DateTime?
+
+  agent            User          @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  reviewer         User?         @relation("ListingReviewer", fields: [reviewedById], references: [id])
+  images           ListingImage[]
+  enquiries        Enquiry[]
+  favorites        Favorite[]
+  compareItems     CompareSetItem[]
+
+  @@index([status])
+  @@index([listingType, propertyType])
+  @@index([district])
+  @@index([price])
+  @@index([agentId])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  listingId String
+  url       String
+  order     Int     @default(0)
+  isCover   Boolean @default(false)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+// ---------- Enquiries ----------
+
+enum EnquiryStatus {
+  new
+  contacted
+  viewing_scheduled
+  negotiating
+  won
+  lost
+  spam
+}
+
+model Enquiry {
+  id          String        @id @default(cuid())
+  listingId   String
+  agentId     String
+  userId      String?
+  name        String
+  phone       String
+  email       String
+  message     String
+  status      EnquiryStatus @default(new)
+  agentNotes  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  listing     Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user        User?         @relation("EnquiryUser", fields: [userId], references: [id])
+
+  @@index([listingId])
+  @@index([agentId, status])
+  @@index([userId])
+}
+
+// ---------- Search / AI ----------
+
+model SearchSession {
+  id            String   @id @default(cuid())
+  userId        String?
+  sessionToken  String   @unique
+  createdAt     DateTime @default(now())
+  lastActiveAt  DateTime @default(now())
+
+  user          User?            @relation(fields: [userId], references: [id])
+  messages      SearchMessage[]
+  parsedIntents ParsedSearchIntent[]
+
+  @@index([sessionToken])
+}
+
+model SearchMessage {
+  id        String        @id @default(cuid())
+  sessionId String
+  role      String // 'user' | 'assistant'
+  content   String
+  createdAt DateTime      @default(now())
+  session   SearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model ParsedSearchIntent {
+  id                  String   @id @default(cuid())
+  sessionId           String
+  intentData          String // JSON
+  clarificationCount  Int      @default(0)
+  createdAt           DateTime @default(now())
+  session             SearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// ---------- Favorites & Compare ----------
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}
+
+model CompareSet {
+  id           String   @id @default(cuid())
+  userId       String?
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  items        CompareSetItem[]
+}
+
+model CompareSetItem {
+  id           String @id @default(cuid())
+  compareSetId String
+  listingId    String
+  addedAt      DateTime @default(now())
+  compareSet   CompareSet @relation(fields: [compareSetId], references: [id], onDelete: Cascade)
+  listing      Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([compareSetId, listingId])
+}
+
+// ---------- Admin ----------
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  adminId    String
+  actionType String
+  targetType String
+  targetId   String
+  note       String?
+  createdAt  DateTime @default(now())
+  admin      User     @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+}
+
+// ---------- Notifications ----------
+
+enum NotificationType {
+  lead_new
+  lead_status_changed
+  listing_approved
+  listing_rejected
+  listing_revision_requested
+  application_approved
+  application_rejected
+  application_info_requested
+  saved_search_match
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ---------- Saved Searches ----------
+
+model SavedSearch {
+  id             String    @id @default(cuid())
+  userId         String
+  name           String
+  query          String
+  intentData     String // JSON of ParsedIntent
+  notifyOnNew    Boolean   @default(true)
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------- Reviews ----------
+
+enum ReviewTarget {
+  listing
+  area
+  project
+  agent
+}
+
+model Review {
+  id         String       @id @default(cuid())
+  userId     String
+  targetKind ReviewTarget
+  targetId   String // listingId / areaSlug / projectId / agentId
+  rating     Int // 1..5
+  title      String?
+  body       String
+  helpful    Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([targetKind, targetId, createdAt])
+  @@index([userId])
+}
+
+// ---------- Appointments (viewings) ----------
+
+enum AppointmentStatus {
+  requested
+  confirmed
+  cancelled
+  completed
+  no_show
+}
+
+enum AppointmentType {
+  in_person
+  video
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  listingId String
+  userId    String
+  agentId   String?
+  scheduledAt DateTime
+  durationMins Int           @default(30)
+  type      AppointmentType   @default(in_person)
+  status    AppointmentStatus @default(requested)
+  meetingUrl String?
+  note      String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([userId, scheduledAt])
+  @@index([agentId, scheduledAt])
+  @@index([listingId, scheduledAt])
+}
+
+// ---------- Wishlist Boards (Pinterest-style) ----------
+
+model WishlistBoard {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  coverUrl  String?
+  isPrivate Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     WishlistItem[]
+
+  @@index([userId, createdAt])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  boardId   String
+  listingId String
+  note      String?
+  addedAt   DateTime @default(now())
+  board     WishlistBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, listingId])
+  @@index([listingId])
+}
+
+// ---------- Web Push subscriptions ----------
+
+model PushSubscription {
+  id          String   @id @default(cuid())
+  userId      String?
+  endpoint    String   @unique
+  p256dh      String
+  auth        String
+  userAgent   String?
+  locale      String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Payments (deposit) ----------
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  refunded
+}
+
+model Payment {
+  id             String         @id @default(cuid())
+  userId         String
+  listingId      String
+  amountSatang   Int            // in smallest unit (satang)
+  currency       String         @default("THB")
+  provider       String         @default("mock") // stripe | omise | mock
+  providerRef    String?        // transaction id
+  purpose        String         @default("deposit")
+  status         PaymentStatus  @default(pending)
+  metadata       String?        // JSON
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([listingId, status])
+}
+
+// ---------- On-chain verification (stub) ----------
+
+model ChainVerification {
+  id          String   @id @default(cuid())
+  listingId   String   @unique
+  documentHash String  // sha256 of title deed file
+  chain       String   @default("polygon-amoy")
+  txHash      String?
+  anchoredAt  DateTime?
+  issuedBy    String?  // wallet or service id
+  status      String   @default("pending") // pending | anchored | failed
+  metadata    String?  // JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

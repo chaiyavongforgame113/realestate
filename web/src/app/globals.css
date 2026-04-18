@@ -1,0 +1,293 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: var(--font-plex), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-prompt), system-ui, -apple-system, sans-serif;
+
+    /* Light theme tokens (RGB channels for Tailwind <alpha-value>) */
+    --ink: 12 10 9;
+    --ink-soft: 28 25 23;
+    --ink-muted: 87 83 78;
+    --ink-subtle: 168 162 158;
+
+    --surface: 255 255 255;
+    --surface-soft: 250 250 249;
+    --surface-sunken: 245 245 244;
+    --surface-raised: 255 255 255;
+
+    --line: 231 229 228;
+
+    --glass-bg: 255 255 255;
+    --glass-border: 255 255 255;
+    --scroll-track: 245 245 244;
+    --scroll-thumb: 214 211 209;
+
+    --mesh-a: 254 226 226;
+    --mesh-b: 254 243 199;
+    --mesh-c: 255 228 230;
+  }
+
+  .dark {
+    /* Dark theme — deep warm ink with subtle warmth */
+    --ink: 250 250 249;
+    --ink-soft: 231 229 228;
+    --ink-muted: 168 162 158;
+    --ink-subtle: 120 113 108;
+
+    --surface: 23 20 19;
+    --surface-soft: 15 13 12;
+    --surface-sunken: 10 9 8;
+    --surface-raised: 32 28 26;
+
+    --line: 45 40 37;
+
+    --glass-bg: 23 20 19;
+    --glass-border: 255 255 255;
+    --scroll-track: 15 13 12;
+    --scroll-thumb: 68 61 56;
+
+    --mesh-a: 60 10 10;
+    --mesh-b: 60 35 5;
+    --mesh-c: 60 10 25;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-surface-soft text-ink font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 400ms ease, color 400ms ease;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+  .dark ::selection {
+    @apply bg-brand-900/60 text-brand-100;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--scroll-track));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--scroll-thumb));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-400;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgb(var(--glass-bg) / 0.7);
+    @apply backdrop-blur-xl border-b;
+    border-color: rgb(var(--glass-border) / 0.6);
+    box-shadow: 0 1px 0 rgba(12, 10, 9, 0.04);
+  }
+  .dark .glass {
+    background: rgb(var(--glass-bg) / 0.55);
+    border-color: rgb(var(--glass-border) / 0.06);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glass card — frosted panel with subtle border */
+  .glass-card {
+    background: rgb(var(--surface) / 0.65);
+    @apply backdrop-blur-xl border rounded-2xl;
+    border-color: rgb(var(--glass-border) / 0.35);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.3) inset,
+      0 8px 32px -8px rgba(12, 10, 9, 0.08);
+  }
+  .dark .glass-card {
+    background: rgb(var(--surface) / 0.5);
+    border-color: rgb(255 255 255 / 0.06);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.04) inset,
+      0 12px 40px -8px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Frosted chip */
+  .frost-chip {
+    background: rgb(var(--surface) / 0.55);
+    @apply backdrop-blur-lg border;
+    border-color: rgb(var(--glass-border) / 0.5);
+  }
+  .dark .frost-chip {
+    background: rgb(var(--surface) / 0.4);
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+  /* Neumorphism — soft extruded */
+  .neumorph {
+    background: rgb(var(--surface-soft));
+    @apply rounded-2xl shadow-neumorph;
+  }
+  .dark .neumorph {
+    @apply shadow-neumorph-dark;
+  }
+  .neumorph-inset {
+    background: rgb(var(--surface-soft));
+    @apply rounded-2xl shadow-neumorph-inset;
+  }
+  .dark .neumorph-inset {
+    @apply shadow-neumorph-dark-inset;
+  }
+
+  .noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.5;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(185, 28, 28, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(185, 28, 28, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
+  }
+  .dark .grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(248, 113, 113, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(248, 113, 113, 0.08) 1px, transparent 1px);
+  }
+
+  .text-gradient-brand {
+    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 50%, #f97316 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .dark .text-gradient-brand {
+    background: linear-gradient(135deg, #fca5a5 0%, #f87171 50%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .shimmer-border {
+    position: relative;
+    background: linear-gradient(rgb(var(--surface)), rgb(var(--surface))) padding-box,
+      linear-gradient(110deg, #b91c1c 0%, #f59e0b 40%, #b91c1c 80%) border-box;
+    border: 2px solid transparent;
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+
+  /* Aurora mesh background — soft animated blobs */
+  .aurora {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora::before,
+  .aurora::after {
+    content: "";
+    position: absolute;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.55;
+    animation: aurora-blob 18s ease-in-out infinite;
+  }
+  .aurora::before {
+    top: -10%;
+    left: -10%;
+    background: radial-gradient(circle, rgb(var(--mesh-a)) 0%, transparent 70%);
+  }
+  .aurora::after {
+    bottom: -20%;
+    right: -10%;
+    background: radial-gradient(circle, rgb(var(--mesh-b)) 0%, transparent 70%);
+    animation-delay: -6s;
+  }
+
+  /* Skeleton shimmer overlay */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--surface-sunken));
+    border-radius: 0.5rem;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--surface) / 0.7) 50%,
+      transparent 100%
+    );
+    animation: shimmer-skeleton 1.8s ease-in-out infinite;
+  }
+  .dark .skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--surface-raised) / 0.5) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Magnetic button wrapper — applied via JS transform */
+  .magnetic {
+    will-change: transform;
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+  }
+
+  /* Focus ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+  .dark .focus-ring {
+    @apply focus-visible:ring-offset-surface-sunken;
+  }
+}
+
+@layer utilities {
+  .mask-fade-r {
+    mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  }
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  }
+  .mask-radial-fade {
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 100%);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Custom cursor target — hide native cursor on interactive elements that want magnetic cursor */
+  @media (hover: hover) and (pointer: fine) {
+    .cursor-none-here {
+      cursor: none;
+    }
+  }
+}

@@ -1,0 +1,80 @@
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { listingUpdateSchema } from "@/lib/validation/listing";
+import { toListingDTO } from "@/lib/listings/transform";
+import { ok, err, handle } from "@/lib/api/respond";
+
+async function ensureOwnListing(id: string, userId: string, role: string) {
+  const listing = await prisma.listing.findUnique({ where: { id } });
+  if (!listing) return null;
+  if (role !== "admin" && listing.agentId !== userId) return null;
+  return listing;
+}
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireRole(["agent", "admin"]);
+    const { id } = await params;
+    const listing = await prisma.listing.findUnique({
+      where: { id },
+      include: { images: { orderBy: { order: "asc" } }, agent: { include: { profile: true, agentProfile: true } } },
+    });
+    if (!listing) return err("Not found", 404);
+    if (session.role !== "admin" && listing.agentId !== session.userId) return err("Forbidden", 403);
+    return ok({ listing: toListingDTO(listing) });
+  } catch (e) {
+    return handle(e);
+  }
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireRole(["agent", "admin"]);
+    const { id } = await params;
+    const existing = await ensureOwnListing(id, session.userId, session.role);
+    if (!existing) return err("Not found or forbidden", 404);
+
+    const body = await req.json();
+    const data = listingUpdateSchema.parse(body);
+
+    // If editing a rejected/revision_requested listing, bump it back to draft
+    const nextStatus =
+      existing.status === "rejected" || existing.status === "revision_requested"
+        ? "draft"
+        : existing.status;
+
+    const { amenities, lifestyleTags, images, ...rest } = data;
+    void images;
+    await prisma.listing.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(amenities && { amenities: JSON.stringify(amenities) }),
+        ...(lifestyleTags && { lifestyleTags: JSON.stringify(lifestyleTags) }),
+        status: nextStatus,
+      },
+    });
+
+    return ok({ ok: true });
+  } catch (e) {
+    return handle(e);
+  }
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireRole(["agent", "admin"]);
+    const { id } = await params;
+    const existing = await ensureOwnListing(id, session.userId, session.role);
+    if (!existing) return err("Not found or forbidden", 404);
+
+    if (existing.status !== "draft" && session.role !== "admin") {
+      return err("ลบได้เฉพาะประกาศฉบับร่างเท่านั้น", 400);
+    }
+
+    await prisma.listing.delete({ where: { id } });
+    return ok({ ok: true });
+  } catch (e) {
+    return handle(e);
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "name": "Estate AI — หาบ้านในฝันด้วย AI",
+  "short_name": "Estate AI",
+  "description": "แพลตฟอร์มอสังหาริมทรัพย์ที่ขับเคลื่อนด้วย AI — ค้นหา เปรียบเทียบ และจองดูทรัพย์ได้ในที่เดียว",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#b31e2a",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["lifestyle", "business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ค้นหาทรัพย์",
+      "short_name": "ค้นหา",
+      "description": "ค้นหาบ้าน/คอนโดด้วย AI",
+      "url": "/search",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "รายการโปรด",
+      "short_name": "โปรด",
+      "description": "บอร์ดที่ฉันบันทึกไว้",
+      "url": "/favorites",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "นัดหมายของฉัน",
+      "short_name": "นัดหมาย",
+      "description": "ดูและจัดการนัดดูทรัพย์",
+      "url": "/appointments",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "display_override": ["standalone", "minimal-ui"]
+}
