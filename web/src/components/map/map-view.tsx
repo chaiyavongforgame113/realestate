@@ -53,5 +53,5 @@ export function MapView({
     }
   }, [latitude, longitude, zoom]);
 
-  return <div ref={ref} className="overflow-hidden rounded-xl border border-line" style={{ height }} />;
+  return <div ref={ref} className="overflow-hidden rounded-xl border border-line" style={{ height, isolation: "isolate", position: "relative", zIndex: 0 }} />;
 }

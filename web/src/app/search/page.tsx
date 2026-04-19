@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Filter as FilterIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
@@ -14,6 +14,7 @@ import { FilterSidebar } from "@/components/search/filter-sidebar";
 import { ResultsToolbar, type ViewMode, type SortKey } from "@/components/search/results-toolbar";
 import { CompareTray } from "@/components/search/compare-tray";
 import { ListingCard } from "@/components/listing-card";
+import { DynamicSearchMap } from "@/components/search/search-map-dynamic";
 import { fetchListings } from "@/lib/listings/client";
 import { toCardView } from "@/lib/listings/adapter";
 import type { SampleListing } from "@/lib/sample-data";
@@ -36,6 +37,7 @@ export default function SearchPage() {
 
 function SearchPageInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const initialQuery = params.get("q") ?? "";
 
   const [query, setQuery] = useState(initialQuery);
@@ -43,6 +45,7 @@ function SearchPageInner() {
   const [sort, setSort] = useState<SortKey>("relevance");
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // AI state
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -159,6 +162,14 @@ function SearchPageInner() {
 
   const compareItems = useMemo(() => listings.filter((l) => compareIds.includes(l.id)), [compareIds, listings]);
 
+  const handleMapClick = useCallback((id: string) => {
+    router.push(`/listing/${id}`);
+  }, [router]);
+
+  const handleMapHover = useCallback((id: string | null) => {
+    setHoveredId(id);
+  }, []);
+
   return (
     <main>
       <Navbar />
@@ -220,53 +231,114 @@ function SearchPageInner() {
                 </div>
               </div>
 
-              {loading ? (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-96 animate-pulse rounded-2xl bg-surface-sunken" />
-                  ))}
-                </div>
-              ) : view === "map" ? (
-                <div className="relative flex h-[70vh] min-h-[480px] items-center justify-center overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-brand-50 via-white to-accent-50">
-                  <div className="relative text-center">
-                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-card">
-                      📍
+              <AnimatePresence mode="wait">
+                {loading ? (
+                  <motion.div
+                    key="search-skeletons"
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"
+                  >
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
+                        <div className="skeleton aspect-[4/3] w-full rounded-none" />
+                        <div className="space-y-3 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="skeleton h-5 w-28" />
+                            <div className="skeleton h-4 w-14 rounded-full" />
+                          </div>
+                          <div className="skeleton h-4 w-[85%]" />
+                          <div className="skeleton h-4 w-[60%]" />
+                          <div className="flex items-center gap-4 pt-2">
+                            <div className="skeleton h-4 w-12" />
+                            <div className="skeleton h-4 w-12" />
+                            <div className="skeleton h-4 w-14" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                ) : view === "map" ? (
+                  <div className="flex h-[75vh] min-h-[520px] gap-4 overflow-hidden rounded-2xl border border-line">
+                    {/* Left: scrollable listing cards */}
+                    <div className="w-[380px] shrink-0 overflow-y-auto bg-white p-3 no-scrollbar">
+                      <p className="mb-3 px-1 text-xs font-semibold text-ink-muted">
+                        {listings.length} รายการบนแผนที่
+                      </p>
+                      <div className="space-y-3">
+                        {listings.map((l, i) => (
+                          <div
+                            key={l.id}
+                            onMouseEnter={() => setHoveredId(l.id)}
+                            onMouseLeave={() => setHoveredId(null)}
+                            className={cn(
+                              "rounded-xl transition-all duration-200",
+                              hoveredId === l.id && "ring-2 ring-brand-500 ring-offset-1"
+                            )}
+                          >
+                            <ListingCard
+                              listing={{
+                                ...l,
+                                aiRecommended: !!matchReasons[l.id],
+                                matchReason: matchReasons[l.id],
+                              }}
+                              index={i}
+                              inCompare={compareIds.includes(l.id)}
+                              onToggleCompare={toggleCompare}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <h3 className="font-display text-xl font-bold text-ink">Map View</h3>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      แผนที่ผลลัพธ์ — integration จริงในเฟสถัดไป
-                    </p>
+                    {/* Right: interactive map */}
+                    <div className="flex-1 overflow-hidden rounded-r-2xl bg-surface-sunken">
+                      <DynamicSearchMap
+                        listings={listings.map((l) => ({
+                          ...l,
+                          aiRecommended: !!matchReasons[l.id],
+                          matchReason: matchReasons[l.id],
+                        }))}
+                        hoveredId={hoveredId}
+                        onHoverListing={handleMapHover}
+                        onClickListing={handleMapClick}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : listings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-line bg-white/60 p-10 text-center">
-                  <p className="font-display text-lg font-bold text-ink">ไม่พบทรัพย์ที่ตรงกับเงื่อนไข</p>
-                  <p className="mt-1 text-sm text-ink-muted">ลองปรับเงื่อนไขหรือใช้ AI Search อีกครั้ง</p>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "grid gap-4 md:gap-5",
-                    view === "grid"
-                      ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-                      : "grid-cols-1"
-                  )}
-                >
-                  {listings.map((l, i) => (
-                    <ListingCard
-                      key={l.id}
-                      listing={{
-                        ...l,
-                        aiRecommended: !!matchReasons[l.id],
-                        matchReason: matchReasons[l.id],
-                      }}
-                      index={i}
-                      inCompare={compareIds.includes(l.id)}
-                      onToggleCompare={toggleCompare}
-                    />
-                  ))}
-                </div>
-              )}
+                ) : listings.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-line bg-white/60 p-10 text-center">
+                    <p className="font-display text-lg font-bold text-ink">ไม่พบทรัพย์ที่ตรงกับเงื่อนไข</p>
+                    <p className="mt-1 text-sm text-ink-muted">ลองปรับเงื่อนไขหรือใช้ AI Search อีกครั้ง</p>
+                  </div>
+                ) : (
+                  <motion.div
+                    key="search-results"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className={cn(
+                      "grid gap-4 md:gap-5",
+                      view === "grid"
+                        ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                        : "grid-cols-1"
+                    )}
+                  >
+                    {listings.map((l, i) => (
+                      <ListingCard
+                        key={l.id}
+                        listing={{
+                          ...l,
+                          aiRecommended: !!matchReasons[l.id],
+                          matchReason: matchReasons[l.id],
+                        }}
+                        index={i}
+                        inCompare={compareIds.includes(l.id)}
+                        onToggleCompare={toggleCompare}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </Container>

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { SampleListing } from "@/lib/sample-data";
 import { Badge } from "../ui/badge";
+import { Lightbox } from "../ui/lightbox";
 
 const DEMO_GALLERY = [
   "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80",
@@ -27,7 +28,14 @@ function resolveImages(listing: SampleListing): string[] {
 export function ListingGallery({ listing }: { listing: SampleListing }) {
   const [active, setActive] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const imgs = resolveImages(listing);
+
+  function openLightbox(idx: number) {
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+  }
 
   return (
     <div>
@@ -80,7 +88,10 @@ export function ListingGallery({ listing }: { listing: SampleListing }) {
               </span>
             )}
           </div>
-          <button className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-ink backdrop-blur-sm transition-all hover:bg-white">
+          <button
+            onClick={() => openLightbox(active)}
+            className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-ink backdrop-blur-sm transition-all hover:bg-white hover:shadow-lift"
+          >
             <Expand className="h-3.5 w-3.5" />
             ดูทั้งหมด {imgs.length} รูป
           </button>
@@ -103,6 +114,13 @@ export function ListingGallery({ listing }: { listing: SampleListing }) {
           ))}
         </div>
       </div>
+
+      <Lightbox
+        images={imgs}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }

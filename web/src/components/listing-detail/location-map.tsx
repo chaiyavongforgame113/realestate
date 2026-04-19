@@ -9,7 +9,7 @@ export function LocationMap({ listing }: { listing: SampleListing }) {
   const lng = listing.longitude ?? BANGKOK_CENTER[1];
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-soft md:p-8">
+    <section className="relative z-0 rounded-2xl border border-line bg-white p-6 shadow-soft md:p-8">
       <h3 className="font-display text-lg font-bold text-ink">ที่ตั้งและการเดินทาง</h3>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
         <MapPin className="h-4 w-4 text-brand-600" />

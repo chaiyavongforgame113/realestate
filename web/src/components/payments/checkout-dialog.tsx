@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CreditCard,
@@ -101,7 +102,9 @@ export function CheckoutDialog({
     onClose();
   }
 
-  return (
+  if (typeof window === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -109,7 +112,7 @@ export function CheckoutDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={close}
-          className="fixed inset-0 z-[75] flex items-center justify-center bg-ink/60 p-4 backdrop-blur"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink/60 p-4 backdrop-blur"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -232,6 +235,7 @@ export function CheckoutDialog({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

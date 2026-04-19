@@ -116,7 +116,7 @@ export function SaveToBoardDialog({ open, listingId, onClose, onSaved }: Props) 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div

@@ -1,13 +1,12 @@
 // Estate AI - Prisma schema
-// Dev uses SQLite for zero-setup. For production, switch datasource to PostgreSQL.
-// Array fields are stored as Json strings to keep SQLite compatibility (PG can use String[]).
+// Array fields are stored as JSON strings (works on both SQLite dev and Postgres prod).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

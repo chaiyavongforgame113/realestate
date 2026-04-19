@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Container } from "./ui/container";
 import { ListingCard } from "./listing-card";
@@ -77,11 +77,33 @@ export function FeaturedListings() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {loading
-            ? Array.from({ length: 8 }).map((_, i) => <ListingCardSkeleton key={i} />)
-            : filtered.map((listing, i) => (
-                <ListingCard key={listing.id} listing={listing} index={i} />
-              ))}
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div
+                key="skeletons"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+              >
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <ListingCardSkeleton key={i} />
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+              >
+                {filtered.map((listing, i) => (
+                  <ListingCard key={listing.id} listing={listing} index={i} />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         {!loading && filtered.length === 0 && (
           <div className="rounded-2xl border border-dashed border-line bg-surface/60 p-10 text-center text-sm text-ink-muted">

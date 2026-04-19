@@ -194,7 +194,7 @@ export function BookViewing({ listingId, agentId, title = "จองดูทร
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/60 p-4 backdrop-blur"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink/60 p-4 backdrop-blur"
           >
             <div className="glass-card relative w-full max-w-sm p-6 text-center">
               <button

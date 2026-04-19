@@ -22,7 +22,7 @@ export function SimilarListings({ currentId }: { currentId: string }) {
   if (!loading && items.length === 0) return null;
 
   return (
-    <section className="py-16">
+    <section className="relative z-0 isolate py-16">
       <div className="mb-6 flex items-end justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-brand-700">

@@ -5,11 +5,12 @@ import { Sparkles, ArrowDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Container } from "./ui/container";
 import { AISearchBox } from "./ai-search-box";
+import { CountUp } from "./motion/count-up";
 
 const stats = [
-  { value: "12,000+", label: "ประกาศทั่วประเทศ" },
-  { value: "2,500+", label: "Agent ที่ผ่านการยืนยัน" },
-  { value: "98%", label: "ผู้ใช้พึงพอใจ AI Search" },
+  { to: 12000, suffix: "+", label: "ประกาศทั่วประเทศ" },
+  { to: 2500, suffix: "+", label: "Agent ที่ผ่านการยืนยัน" },
+  { to: 98, suffix: "%", label: "ผู้ใช้พึงพอใจ AI Search" },
 ];
 
 export function Hero() {
@@ -157,7 +158,7 @@ export function Hero() {
                   className="px-4 py-5 md:px-6 md:py-6"
                 >
                   <div className="font-display text-2xl font-bold text-ink md:text-3xl">
-                    {s.value}
+                    <CountUp to={s.to} suffix={s.suffix} />
                   </div>
                   <div className="mt-1 text-xs text-ink-muted md:text-sm">{s.label}</div>
                 </motion.div>

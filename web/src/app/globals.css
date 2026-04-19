@@ -264,6 +264,51 @@
   .dark .focus-ring {
     @apply focus-visible:ring-offset-surface-sunken;
   }
+
+  /* Mortgage calculator slider */
+  .mortgage-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 9999px;
+    background: rgb(var(--surface-sunken));
+    outline: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+  }
+  .mortgage-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #b91c1c, #f97316);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .mortgage-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(185, 28, 28, 0.45);
+  }
+  .mortgage-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #b91c1c, #f97316);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);
+    cursor: pointer;
+  }
+  .dark .mortgage-slider {
+    background: rgb(var(--surface-sunken));
+  }
+  .dark .mortgage-slider::-webkit-slider-thumb {
+    border-color: rgb(var(--surface));
+  }
 }
 
 @layer utilities {
@@ -289,5 +334,34 @@
     .cursor-none-here {
       cursor: none;
     }
+  }
+
+  /* Contain Leaflet map z-index so it doesn't bleed over fixed modals */
+  .leaflet-container {
+    isolation: isolate;
+    position: relative;
+    z-index: 0;
+  }
+  .leaflet-top,
+  .leaflet-bottom {
+    z-index: 50 !important;
+  }
+  .leaflet-pane {
+    z-index: 40 !important;
+  }
+  .leaflet-tile-pane {
+    z-index: 20 !important;
+  }
+  .leaflet-overlay-pane {
+    z-index: 30 !important;
+  }
+  .leaflet-marker-pane {
+    z-index: 40 !important;
+  }
+  .leaflet-tooltip-pane {
+    z-index: 45 !important;
+  }
+  .leaflet-popup-pane {
+    z-index: 50 !important;
   }
 }

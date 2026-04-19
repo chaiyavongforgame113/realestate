@@ -13,6 +13,8 @@ import { BookViewing } from "@/components/appointments/book-viewing";
 import { ReviewPanel } from "@/components/reviews/review-panel";
 import { VerifiedBadge } from "@/components/chain/verified-badge";
 import { ReserveButton } from "@/components/payments/reserve-button";
+import { MortgageCalculator } from "@/components/listing-detail/mortgage-calculator";
+import { NeighborhoodInsights } from "@/components/listing-detail/neighborhood-insights";
 import { prisma } from "@/lib/prisma";
 import { toListingDTO } from "@/lib/listings/transform";
 import { toCardView } from "@/lib/listings/adapter";
@@ -51,6 +53,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                 <VirtualTour url={cardView.virtualTourUrl} title={cardView.title} />
               )}
               <LocationMap listing={cardView} />
+              <NeighborhoodInsights listing={cardView} />
               <ReviewPanel targetKind="listing" targetId={cardView.id} />
             </div>
             <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -63,6 +66,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                 className="w-full"
               />
               <EnquiryForm listing={cardView} />
+              <MortgageCalculator priceBaht={cardView.price} />
             </aside>
           </div>
 
