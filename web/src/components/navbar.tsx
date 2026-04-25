@@ -78,6 +78,16 @@ export function Navbar() {
             <div className="h-9 w-24 animate-pulse rounded-lg bg-surface-sunken" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              {user.role === "user" && (
+                <Magnetic strength={0.3}>
+                  <Link href="/become-agent">
+                    <Button variant="accent" size="sm" className="group">
+                      <Building2 className="h-4 w-4 transition-transform group-hover:rotate-6" />
+                      ลงประกาศฟรี
+                    </Button>
+                  </Link>
+                </Magnetic>
+              )}
               <NotificationBell />
               <div className="relative">
               <button
@@ -202,6 +212,14 @@ export function Navbar() {
                       <Link href={dashboardHref} onClick={() => setMobileOpen(false)}>
                         <Button variant="outline" size="md" className="w-full">
                           Dashboard
+                        </Button>
+                      </Link>
+                    )}
+                    {user.role === "user" && (
+                      <Link href="/become-agent" onClick={() => setMobileOpen(false)}>
+                        <Button variant="accent" size="md" className="w-full">
+                          <Building2 className="h-4 w-4" />
+                          ลงประกาศฟรี
                         </Button>
                       </Link>
                     )}
