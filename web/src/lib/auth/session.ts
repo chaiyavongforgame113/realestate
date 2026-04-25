@@ -48,6 +48,15 @@ export async function requireSession(): Promise<Session> {
 
 export async function requireRole(roles: Array<Session["role"]>): Promise<Session> {
   const s = await requireSession();
-  if (!roles.includes(s.role)) throw new Response("Forbidden", { status: 403 });
-  return s;
+  // Verify the current DB state — role may have changed or user suspended
+  // since the JWT was issued (TTL up to 15 min).
+  const u = await prisma.user.findUnique({
+    where: { id: s.userId },
+    select: { role: true, status: true },
+  });
+  if (!u || u.status === "suspended") {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+  if (!roles.includes(u.role)) throw new Response("Forbidden", { status: 403 });
+  return { ...s, role: u.role };
 }

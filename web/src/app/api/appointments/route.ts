@@ -21,10 +21,61 @@ export async function GET(req: Request) {
 
   const items = await prisma.appointment.findMany({
     where: scope === "agent" ? { agentId: user.id } : { userId: user.id },
-    orderBy: { scheduledAt: "asc" },
+    orderBy: { scheduledAt: "desc" },
     take: 100,
   });
-  return NextResponse.json({ items });
+
+  const listingIds = Array.from(new Set(items.map((a) => a.listingId)));
+  const agentIds = Array.from(new Set(items.map((a) => a.agentId).filter((x): x is string => !!x)));
+
+  const [listings, agentProfiles, agents] = await Promise.all([
+    prisma.listing.findMany({
+      where: { id: { in: listingIds } },
+      select: { id: true, title: true, coverImageUrl: true, price: true, priceUnit: true },
+    }),
+    prisma.agentProfile.findMany({
+      where: { userId: { in: agentIds } },
+      select: { userId: true, displayName: true, profileImageUrl: true },
+    }),
+    prisma.userProfile.findMany({
+      where: { userId: { in: agentIds } },
+      select: { userId: true, firstName: true, lastName: true, phone: true },
+    }),
+  ]);
+
+  const listingMap = new Map(listings.map((l) => [l.id, l]));
+  const agentProfileMap = new Map(agentProfiles.map((p) => [p.userId, p]));
+  const agentUserMap = new Map(agents.map((u) => [u.userId, u]));
+
+  return NextResponse.json({
+    items: items.map((a) => {
+      const ap = a.agentId ? agentProfileMap.get(a.agentId) : null;
+      const au = a.agentId ? agentUserMap.get(a.agentId) : null;
+      return {
+        id: a.id,
+        listing: listingMap.get(a.listingId) ?? null,
+        agent: a.agentId
+          ? {
+              name:
+                ap?.displayName ||
+                `${au?.firstName ?? ""} ${au?.lastName ?? ""}`.trim() ||
+                "Agent",
+              avatar: ap?.profileImageUrl ?? null,
+              phone: au?.phone ?? null,
+            }
+          : null,
+        scheduledAt: a.scheduledAt,
+        durationMins: a.durationMins,
+        type: a.type,
+        status: a.status,
+        note: a.note,
+        cancellationReason: a.cancellationReason,
+        meetingUrl: a.meetingUrl,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+      };
+    }),
+  });
 }
 
 export async function POST(req: Request) {
@@ -60,6 +111,36 @@ export async function POST(req: Request) {
       status: "requested",
     },
   });
+
+  if (created.agentId) {
+    const listing = await prisma.listing.findUnique({
+      where: { id: created.listingId },
+      select: { title: true },
+    });
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { userId: user.id },
+      select: { firstName: true, lastName: true },
+    });
+    const userName =
+      `${userProfile?.firstName ?? ""} ${userProfile?.lastName ?? ""}`.trim() ||
+      user.email ||
+      "ผู้สนใจ";
+    const whenLabel = when.toLocaleString("th-TH", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    await prisma.notification.create({
+      data: {
+        userId: created.agentId,
+        type: "lead_new",
+        title: "นัดดูทรัพย์ใหม่",
+        message: `${userName} ขอนัดดู "${listing?.title ?? "ทรัพย์"}" — ${whenLabel}`,
+        link: "/agent/appointments",
+      },
+    });
+  }
 
   return NextResponse.json({ appointment: created });
 }

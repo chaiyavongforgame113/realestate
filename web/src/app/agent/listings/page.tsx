@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, MoreVertical, Eye, MessageSquare, Edit3, Trash2, Search, Send } from "lucide-react";
+import { Plus, MoreVertical, Eye, MessageSquare, Edit3, Trash2, Search, Send, Lock, Clock } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusChip } from "@/components/dashboard/status-chip";
 import { Button } from "@/components/ui/button";
@@ -116,10 +116,20 @@ export default function AgentListingsPage() {
               <tr><td colSpan={6} className="p-10 text-center text-sm text-ink-muted">กำลังโหลด...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={6} className="p-10 text-center text-sm text-ink-muted">ไม่พบประกาศที่ตรงกับเงื่อนไข</td></tr>
-            ) : filtered.map((l) => (
+            ) : filtered.map((l) => {
+              const isPending = l.status === "pending_review";
+              const Wrapper = ({ children }: { children: React.ReactNode }) =>
+                isPending ? (
+                  <div className="flex items-center gap-3">{children}</div>
+                ) : (
+                  <Link href={`/agent/listings/${l.id}/edit`} className="flex items-center gap-3">
+                    {children}
+                  </Link>
+                );
+              return (
               <tr key={l.id} className="group border-b border-line transition-colors hover:bg-surface-soft/50 last:border-0">
                 <td className="px-4 py-3">
-                  <Link href={`/agent/listings/${l.id}/edit`} className="flex items-center gap-3">
+                  <Wrapper>
                     <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg">
                       <Image src={l.coverImageUrl} alt={l.title} fill sizes="80px" className="object-cover" />
                     </div>
@@ -127,7 +137,7 @@ export default function AgentListingsPage() {
                       <div className="line-clamp-2 text-sm font-semibold text-ink">{l.title}</div>
                       <div className="mt-0.5 text-xs text-ink-muted">{l.district}</div>
                     </div>
-                  </Link>
+                  </Wrapper>
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-display text-sm font-bold text-ink">
@@ -139,6 +149,12 @@ export default function AgentListingsPage() {
                 </td>
                 <td className="px-4 py-3">
                   <StatusChip status={l.status} />
+                  {isPending && (
+                    <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700">
+                      <Clock className="h-2.5 w-2.5" />
+                      ล็อคระหว่างรอตรวจ
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5 text-sm text-ink">
@@ -161,13 +177,26 @@ export default function AgentListingsPage() {
                         ส่ง
                       </button>
                     )}
-                    <Link
-                      href={`/agent/listings/${l.id}/edit`}
-                      title="แก้ไข"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-sunken hover:text-ink"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Link>
+                    {isPending ? (
+                      <span
+                        title="กำลังรอตรวจจากแอดมิน — แก้ไขไม่ได้จนกว่าจะได้ผลการตรวจ"
+                        className="flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg text-ink-subtle opacity-60"
+                      >
+                        <Lock className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/agent/listings/${l.id}/edit`}
+                        title={
+                          l.status === "published" || l.status === "sold" || l.status === "rented"
+                            ? "แก้ไข (จะต้องให้แอดมินอนุมัติการแก้ไขก่อนเผยแพร่)"
+                            : "แก้ไข"
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Link>
+                    )}
                     {l.status === "draft" && (
                       <button
                         onClick={() => deleteListing(l.id)}
@@ -183,7 +212,8 @@ export default function AgentListingsPage() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

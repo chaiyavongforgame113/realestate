@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SampleListing } from "@/lib/sample-data";
@@ -16,6 +16,22 @@ export function EnquiryForm({ listing }: { listing: SampleListing }) {
     email: "",
     message: `สนใจทรัพย์ ${listing.title} ราคา ${formatPrice(listing.price, listing.priceUnit)} ต้องการนัดชมห้องในสัปดาห์นี้ครับ/ค่ะ`,
   });
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data?.user) return;
+        const fullName = `${data.user.firstName ?? ""} ${data.user.lastName ?? ""}`.trim();
+        setForm((prev) => ({
+          ...prev,
+          name: prev.name || fullName,
+          phone: prev.phone || (data.user.phone ?? ""),
+          email: prev.email || data.user.email,
+        }));
+      })
+      .catch(() => {});
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

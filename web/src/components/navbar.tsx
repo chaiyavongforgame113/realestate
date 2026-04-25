@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Menu, X, Home, Building2, Sparkles, LogOut, User as UserIcon, Heart, MessageSquare, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Container } from "./ui/container";
@@ -83,8 +84,12 @@ export function Navbar() {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-full border border-line bg-white px-2 py-1 pr-3 shadow-soft hover:border-brand-300"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-brand text-xs font-semibold text-white">
-                  {(user.firstName ?? user.email)[0].toUpperCase()}
+                <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-brand text-xs font-semibold text-white">
+                  {user.avatarUrl ? (
+                    <Image src={user.avatarUrl} alt="avatar" fill sizes="28px" className="object-cover" />
+                  ) : (
+                    (user.firstName ?? user.email)[0].toUpperCase()
+                  )}
                 </div>
                 <span className="text-sm font-medium text-ink">
                   {user.firstName ?? user.email.split("@")[0]}
@@ -146,7 +151,7 @@ export function Navbar() {
                 </Button>
               </Link>
               <Magnetic strength={0.3}>
-                <Link href="/become-agent">
+                <Link href="/register?intent=agent">
                   <Button variant="accent" size="sm" className="group">
                     <Building2 className="h-4 w-4 transition-transform group-hover:rotate-6" />
                     ลงประกาศฟรี
@@ -219,7 +224,7 @@ export function Navbar() {
                         เข้าสู่ระบบ
                       </Button>
                     </Link>
-                    <Link href="/become-agent" onClick={() => setMobileOpen(false)}>
+                    <Link href="/register?intent=agent" onClick={() => setMobileOpen(false)}>
                       <Button variant="accent" size="md" className="w-full">
                         ลงประกาศฟรี
                       </Button>

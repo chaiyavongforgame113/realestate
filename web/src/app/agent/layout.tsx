@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutDashboard, Building2, Users2, BarChart3, Megaphone, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, Users2, Calendar, BarChart3, Megaphone, Settings } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar, type NavItem } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
+import { useAuth } from "@/lib/auth/client";
 
 const agentNav: NavItem[] = [
   { label: "ภาพรวม", href: "/agent", icon: LayoutDashboard },
-  { label: "ประกาศของฉัน", href: "/agent/listings", icon: Building2, badge: 5 },
-  { label: "Leads", href: "/agent/leads", icon: Users2, badge: 3 },
+  { label: "ประกาศของฉัน", href: "/agent/listings", icon: Building2 },
+  { label: "Leads", href: "/agent/leads", icon: Users2 },
+  { label: "นัดดู", href: "/agent/appointments", icon: Calendar },
   { label: "สถิติ", href: "/agent/analytics", icon: BarChart3 },
   { label: "โปรโมท", href: "/agent/promote", icon: Megaphone },
   { label: "ตั้งค่า", href: "/agent/settings", icon: Settings },
@@ -17,13 +19,22 @@ const agentNav: NavItem[] = [
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const sidebarUser = {
+    name:
+      `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
+      user?.email?.split("@")[0] ||
+      "Agent",
+    role: "Agent",
+    avatar: user?.avatarUrl ?? undefined,
+  };
 
   return (
     <div className="min-h-screen bg-surface-soft lg:pl-64">
       <Sidebar
         items={agentNav}
         mode="agent"
-        user={{ name: "ณัฐพงศ์ อยู่สุข", role: "Agent · ยืนยันแล้ว" }}
+        user={sidebarUser}
       />
 
       <AnimatePresence>
@@ -46,7 +57,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
               <Sidebar
                 items={agentNav}
                 mode="agent"
-                user={{ name: "ณัฐพงศ์ อยู่สุข", role: "Agent · ยืนยันแล้ว" }}
+                user={sidebarUser}
                 variant="drawer"
                 onNavigate={() => setMobileOpen(false)}
               />

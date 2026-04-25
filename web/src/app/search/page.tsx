@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Filter as FilterIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,7 +12,6 @@ import { AIInterpretation, type ParsedChips } from "@/components/search/ai-inter
 import { AIClarification } from "@/components/search/ai-clarification";
 import { FilterSidebar } from "@/components/search/filter-sidebar";
 import { ResultsToolbar, type ViewMode, type SortKey } from "@/components/search/results-toolbar";
-import { CompareTray } from "@/components/search/compare-tray";
 import { ListingCard } from "@/components/listing-card";
 import { DynamicSearchMap } from "@/components/search/search-map-dynamic";
 import { fetchListings } from "@/lib/listings/client";
@@ -43,7 +42,6 @@ function SearchPageInner() {
   const [query, setQuery] = useState(initialQuery);
   const [view, setView] = useState<ViewMode>("grid");
   const [sort, setSort] = useState<SortKey>("relevance");
-  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -151,16 +149,6 @@ function SearchPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsString]);
-
-  const toggleCompare = (id: string) => {
-    setCompareIds((ids) => {
-      if (ids.includes(id)) return ids.filter((i) => i !== id);
-      if (ids.length >= 5) return ids;
-      return [...ids, id];
-    });
-  };
-
-  const compareItems = useMemo(() => listings.filter((l) => compareIds.includes(l.id)), [compareIds, listings]);
 
   const handleMapClick = useCallback((id: string) => {
     router.push(`/listing/${id}`);
@@ -284,8 +272,6 @@ function SearchPageInner() {
                                 matchReason: matchReasons[l.id],
                               }}
                               index={i}
-                              inCompare={compareIds.includes(l.id)}
-                              onToggleCompare={toggleCompare}
                             />
                           </div>
                         ))}
@@ -332,8 +318,6 @@ function SearchPageInner() {
                           matchReason: matchReasons[l.id],
                         }}
                         index={i}
-                        inCompare={compareIds.includes(l.id)}
-                        onToggleCompare={toggleCompare}
                       />
                     ))}
                   </motion.div>
@@ -345,12 +329,6 @@ function SearchPageInner() {
       </div>
 
       <Footer />
-
-      <CompareTray
-        items={compareItems}
-        onRemove={toggleCompare}
-        onClear={() => setCompareIds([])}
-      />
 
       <AnimatePresence>
         {mobileFiltersOpen && (

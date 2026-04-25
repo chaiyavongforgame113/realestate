@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Phone, Mail, MessageSquare, Sparkles, Clock, Search, Filter, Save } from "lucide-react";
+import { Phone, Mail, Sparkles, Clock, Search, Filter, Save } from "lucide-react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusChip } from "@/components/dashboard/status-chip";
+import { ConversationThread } from "@/components/enquiry/conversation-thread";
 import { cn } from "@/lib/utils";
 
 interface Lead {
@@ -208,10 +209,6 @@ function LeadDetail({
             <Phone className="h-4 w-4" />
             โทรหา
           </a>
-          <button className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-white text-sm font-semibold text-ink shadow-soft hover:border-brand-300">
-            <MessageSquare className="h-4 w-4" />
-            ส่งข้อความ
-          </button>
         </div>
       </header>
 
@@ -236,6 +233,13 @@ function LeadDetail({
           <div className="mt-1 flex items-center gap-1 text-xs text-ink-subtle">
             <Clock className="h-3 w-3" />
             {new Date(lead.createdAt).toLocaleString("th-TH")}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted">บทสนทนา</div>
+          <div className="mt-2">
+            <ConversationThread enquiryId={lead.id} viewerRole="agent" />
           </div>
         </div>
 

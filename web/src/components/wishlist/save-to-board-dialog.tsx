@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Bookmark, Check, Loader2, Lock, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Board = {
   id: string;
@@ -109,7 +110,9 @@ export function SaveToBoardDialog({ open, listingId, onClose, onSaved }: Props) 
     }
   }
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -261,6 +264,7 @@ export function SaveToBoardDialog({ open, listingId, onClose, onSaved }: Props) 
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

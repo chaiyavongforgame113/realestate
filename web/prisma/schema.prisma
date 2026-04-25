@@ -27,7 +27,8 @@ enum UserStatus {
 model User {
   id              String     @id @default(cuid())
   email           String     @unique
-  passwordHash    String
+  passwordHash    String?
+  googleId        String?    @unique
   role            UserRole   @default(user)
   status          UserStatus @default(active)
   emailVerifiedAt DateTime?
@@ -40,6 +41,8 @@ model User {
   reviewedApplications AgentApplication[] @relation("ReviewerApplications")
   listings           Listing[]
   reviewedListings   Listing[] @relation("ListingReviewer")
+  listingRevisions   ListingRevision[] @relation("RevisionAgent")
+  reviewedRevisions  ListingRevision[] @relation("RevisionReviewer")
   enquiries          Enquiry[] @relation("EnquiryUser")
   favorites          Favorite[]
   refreshTokens      RefreshToken[]
@@ -225,6 +228,7 @@ model Listing {
   enquiries        Enquiry[]
   favorites        Favorite[]
   compareItems     CompareSetItem[]
+  revisions        ListingRevision[]
 
   @@index([status])
   @@index([listingType, propertyType])
@@ -242,6 +246,44 @@ model ListingImage {
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
+}
+
+// ---------- Listing Revisions ----------
+// When an agent edits an already-published listing, the change is staged as a
+// ListingRevision (status=pending). The public Listing record stays untouched
+// until an admin approves the revision — at which point fields are merged back.
+
+enum RevisionStatus {
+  pending
+  approved
+  rejected
+}
+
+model ListingRevision {
+  id              String         @id @default(cuid())
+  listingId       String
+  agentId         String
+  status          RevisionStatus @default(pending)
+
+  // JSON snapshot of the proposed edit (all editable fields + images)
+  data            String
+
+  // Admin review
+  reviewedById    String?
+  reviewedAt      DateTime?
+  adminNote       String?
+  rejectionReason String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  listing         Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  agent           User           @relation("RevisionAgent", fields: [agentId], references: [id], onDelete: Cascade)
+  reviewer        User?          @relation("RevisionReviewer", fields: [reviewedById], references: [id])
+
+  @@index([listingId])
+  @@index([agentId])
+  @@index([status])
 }
 
 // ---------- Enquiries ----------
@@ -272,10 +314,30 @@ model Enquiry {
 
   listing     Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
   user        User?         @relation("EnquiryUser", fields: [userId], references: [id])
+  messages    EnquiryMessage[]
 
   @@index([listingId])
   @@index([agentId, status])
   @@index([userId])
+}
+
+enum EnquiryMessageSender {
+  user
+  agent
+}
+
+model EnquiryMessage {
+  id         String               @id @default(cuid())
+  enquiryId  String
+  senderId   String
+  senderRole EnquiryMessageSender
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime             @default(now())
+
+  enquiry    Enquiry              @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([enquiryId, createdAt])
 }
 
 // ---------- Search / AI ----------
@@ -463,6 +525,7 @@ model Appointment {
   status    AppointmentStatus @default(requested)
   meetingUrl String?
   note      String?
+  cancellationReason String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 

@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Heart, MessageSquare, Settings, Bell, Bookmark } from "lucide-react";
+import { User, Heart, MessageSquare, Settings, Bookmark, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { label: "Profile", href: "/profile", icon: User },
-  { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Favorites", href: "/favorites", icon: Heart },
   { label: "Saved Searches", href: "/saved-searches", icon: Bookmark },
   { label: "Enquiries", href: "/enquiries", icon: MessageSquare },
+  { label: "นัดดู", href: "/appointments", icon: Calendar },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Send, Trash2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, Send, Trash2, AlertCircle, CheckCircle2, Lock, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/dashboard/status-chip";
@@ -46,6 +46,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [revisionStaged, setRevisionStaged] = useState(false);
 
   useEffect(() => {
     fetch(`/api/agent/listings/${id}`)
@@ -85,6 +86,51 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="py-10 text-center text-sm text-ink-muted">
         ไม่พบประกาศ หรือไม่มีสิทธิ์เข้าถึง
+      </div>
+    );
+  }
+
+  // Block editing while pending_review — agent must wait for admin decision
+  if (listing.status === "pending_review") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Link
+          href="/agent/listings"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-brand-700"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          กลับสู่ประกาศของฉัน
+        </Link>
+
+        <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-8 text-center shadow-soft">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+            <Lock className="h-8 w-8 text-amber-700" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-ink">
+            ประกาศนี้ล็อคระหว่างรอตรวจ
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
+            ประกาศ <span className="font-semibold text-ink">&ldquo;{listing.title}&rdquo;</span>{" "}
+            ของคุณถูกส่งให้แอดมินตรวจสอบแล้ว
+            ยังไม่สามารถแก้ไขได้จนกว่าจะได้ผลการตรวจ
+            (อนุมัติ / ขอแก้ไข / ปฏิเสธ)
+          </p>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-800">
+            <Clock className="h-3.5 w-3.5" />
+            กำลังรอแอดมินตรวจ · โดยทั่วไปใช้เวลา 2–4 ชม.
+          </div>
+          <div className="mt-7 flex items-center justify-center gap-3">
+            <Link href="/agent/listings">
+              <Button variant="primary" size="md">
+                กลับสู่รายการประกาศ
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <p className="mt-5 text-center text-xs text-ink-muted">
+          หากต้องการแก้ไขด่วน กรุณาติดต่อฝ่ายสนับสนุนเพื่อถอนการส่งตรวจ
+        </p>
       </div>
     );
   }
@@ -140,6 +186,12 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           : resData.error;
         throw new Error(msg ?? "บันทึกไม่สำเร็จ");
       }
+      // Check if the backend staged a revision (published listing edit flow)
+      if (resData.revision) {
+        setRevisionStaged(true);
+        setSuccess(false);
+        return;
+      }
       if (andSubmit) {
         const sr = await fetch(`/api/agent/listings/${id}/submit`, { method: "POST" });
         if (!sr.ok) {
@@ -193,6 +245,60 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         </div>
+      )}
+
+      {/* Published / sold / rented — edits require admin approval */}
+      {(listing.status === "published" || listing.status === "sold" || listing.status === "rented") && (
+        <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-sky-900">
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold">การแก้ไขต้องผ่านแอดมินอนุมัติก่อน</div>
+              <div className="mt-1 text-sky-800/90">
+                ประกาศนี้เผยแพร่อยู่ การเปลี่ยนแปลงที่คุณบันทึกจะ{" "}
+                <span className="font-semibold">ยังไม่แสดงผลต่อผู้ใช้ทันที</span>{" "}
+                เราจะส่งให้แอดมินตรวจและอัปเดตข้อมูลใหม่เมื่อผ่านการอนุมัติเท่านั้น
+                ในระหว่างนี้ผู้ใช้จะยังเห็นข้อมูลเดิม
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success screen for staged revision */}
+      {revisionStaged && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="font-display text-base font-bold text-emerald-900">
+                ส่งการแก้ไขให้แอดมินตรวจแล้ว
+              </div>
+              <p className="mt-1 text-emerald-800/90">
+                เราได้บันทึกการแก้ไขของคุณเป็น &ldquo;revision รอตรวจ&rdquo;
+                แอดมินจะรีวิวและอนุมัติการอัปเดต —
+                เมื่อผ่านการอนุมัติแล้ว ข้อมูลใหม่จะถูกเผยแพร่ให้ผู้ใช้เห็นทันที
+                (ข้อมูลเดิมยังคงอยู่ในระหว่างนี้)
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/agent/listings">
+                  <Button variant="primary" size="sm">กลับสู่รายการประกาศ</Button>
+                </Link>
+                <Button variant="outline" size="sm" onClick={() => setRevisionStaged(false)}>
+                  แก้ไขเพิ่มเติม
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       )}
 
       <div className="space-y-5">

@@ -109,12 +109,18 @@ export default function EnquiriesPage() {
                       "{e.message}"
                     </p>
 
-                    <div className="mt-3 flex items-center justify-end">
+                    <div className="mt-3 flex items-center justify-end gap-3">
                       <Link
                         href={`/listing/${e.listing.id}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-ink-muted hover:text-brand-700"
+                      >
+                        ดูประกาศ
+                      </Link>
+                      <Link
+                        href={`/enquiries/${e.id}`}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
                       >
-                        ดูประกาศ <ArrowRight className="h-3 w-3" />
+                        เปิดบทสนทนา <ArrowRight className="h-3 w-3" />
                       </Link>
                     </div>
                   </div>

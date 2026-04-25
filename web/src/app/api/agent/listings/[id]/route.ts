@@ -37,7 +37,42 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     const data = listingUpdateSchema.parse(body);
 
-    // If editing a rejected/revision_requested listing, bump it back to draft
+    // Block direct edit while pending_review — agent must wait for admin decision
+    if (existing.status === "pending_review" && session.role !== "admin") {
+      return err(
+        "ประกาศนี้อยู่ระหว่างรอตรวจจากแอดมิน ไม่สามารถแก้ไขได้จนกว่าจะได้รับการตัดสินใจ",
+        409
+      );
+    }
+
+    // === EDIT-AS-REVISION for PUBLISHED listings ===
+    // Published/sold/rented listings don't edit in place — stage as ListingRevision
+    // that admin must approve before public data changes. Also cancel any existing
+    // pending revision (keep only the latest one).
+    if (existing.status === "published" || existing.status === "sold" || existing.status === "rented") {
+      if (session.role !== "admin") {
+        await prisma.listingRevision.updateMany({
+          where: { listingId: id, status: "pending" },
+          data: { status: "rejected", adminNote: "ถูกแทนที่โดยการแก้ไขใหม่" },
+        });
+        await prisma.listingRevision.create({
+          data: {
+            listingId: id,
+            agentId: existing.agentId,
+            status: "pending",
+            data: JSON.stringify(data),
+          },
+        });
+        return ok({
+          ok: true,
+          revision: true,
+          message: "บันทึกการแก้ไขแล้ว รอแอดมินตรวจสอบก่อนเผยแพร่ข้อมูลใหม่",
+        });
+      }
+      // Admin editing a published listing → apply immediately
+    }
+
+    // === DIRECT EDIT for draft / rejected / revision_requested ===
     const nextStatus =
       existing.status === "rejected" || existing.status === "revision_requested"
         ? "draft"
@@ -55,7 +90,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
-    return ok({ ok: true });
+    return ok({ ok: true, revision: false });
   } catch (e) {
     return handle(e);
   }

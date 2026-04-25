@@ -4,7 +4,7 @@ import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 
 const AGENT_PREFIX = "/agent";
 const ADMIN_PREFIX = "/admin";
-const ACCOUNT_PREFIXES = ["/favorites", "/enquiries", "/profile", "/settings", "/notifications", "/saved-searches"];
+const ACCOUNT_PREFIXES = ["/favorites", "/enquiries", "/profile", "/settings", "/notifications", "/saved-searches", "/appointments"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -51,5 +51,6 @@ export const config = {
     "/settings/:path*",
     "/notifications/:path*",
     "/saved-searches/:path*",
+    "/appointments/:path*",
   ],
 };

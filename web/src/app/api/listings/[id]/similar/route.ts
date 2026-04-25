@@ -23,10 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
           lte: anchor.price + priceBand,
         },
       },
-      orderBy: [
-        { district: anchor.district === "" ? undefined : undefined }, // placeholder
-        { publishedAt: "desc" },
-      ],
+      orderBy: { publishedAt: "desc" },
       take: 8,
       include: {
         images: { take: 1, orderBy: { order: "asc" } },

@@ -56,15 +56,32 @@ export async function POST(req: Request) {
     },
   });
 
-  const charge = await createCharge({
-    amountSatang: parsed.data.amountSatang,
-    currency: "THB",
-    listingId: parsed.data.listingId,
-    userId: user.id,
-    purpose: parsed.data.purpose,
-    method: parsed.data.method,
-    idempotencyKey: payment.id,
-  });
+  let charge;
+  try {
+    charge = await createCharge({
+      amountSatang: parsed.data.amountSatang,
+      currency: "THB",
+      listingId: parsed.data.listingId,
+      userId: user.id,
+      purpose: parsed.data.purpose,
+      method: parsed.data.method,
+      idempotencyKey: payment.id,
+    });
+  } catch (e) {
+    // Provider threw — mark the pending payment as failed so it doesn't leak.
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "failed",
+        metadata: JSON.stringify({
+          ...(parsed.data.metadata ?? {}),
+          method: parsed.data.method,
+          failureReason: (e as Error).message,
+        }),
+      },
+    }).catch(() => null);
+    return NextResponse.json({ error: "provider_error" }, { status: 502 });
+  }
 
   const newStatus =
     charge.status === "succeeded"

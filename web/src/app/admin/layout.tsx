@@ -13,6 +13,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar, type NavItem } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
+import { useAuth } from "@/lib/auth/client";
 
 const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -26,13 +27,22 @@ const adminNav: NavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const sidebarUser = {
+    name:
+      `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
+      user?.email?.split("@")[0] ||
+      "Admin",
+    role: "Super Admin",
+    avatar: user?.avatarUrl ?? undefined,
+  };
 
   return (
     <div className="min-h-screen bg-surface-soft lg:pl-64">
       <Sidebar
         items={adminNav}
         mode="admin"
-        user={{ name: "Admin", role: "Super Admin" }}
+        user={sidebarUser}
       />
 
       <AnimatePresence>
@@ -55,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Sidebar
                 items={adminNav}
                 mode="admin"
-                user={{ name: "Admin", role: "Super Admin" }}
+                user={sidebarUser}
                 variant="drawer"
                 onNavigate={() => setMobileOpen(false)}
               />

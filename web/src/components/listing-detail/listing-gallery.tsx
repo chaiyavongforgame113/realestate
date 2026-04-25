@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, Heart, Share2, Expand } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Expand, Check, Scale } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { SampleListing } from "@/lib/sample-data";
 import { Badge } from "../ui/badge";
 import { Lightbox } from "../ui/lightbox";
+import { useCompare } from "@/lib/compare/store";
 
 const DEMO_GALLERY = [
   "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80",
@@ -26,11 +27,65 @@ function resolveImages(listing: SampleListing): string[] {
 }
 
 export function ListingGallery({ listing }: { listing: SampleListing }) {
+  const compare = useCompare();
+  const inCompare = compare.has(listing.id);
+  const compareFull = compare.count >= compare.max && !inCompare;
   const [active, setActive] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const imgs = resolveImages(listing);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/favorites")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.favorites) return;
+        if (data.favorites.some((f: { listing: { id: string } }) => f.listing.id === listing.id)) {
+          setLiked(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [listing.id]);
+
+  async function toggleFavorite() {
+    if (saving) return;
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setSaving(true);
+    try {
+      const res = nextLiked
+        ? await fetch("/api/favorites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ listingId: listing.id }),
+          })
+        : await fetch(`/api/favorites?listingId=${encodeURIComponent(listing.id)}`, {
+            method: "DELETE",
+          });
+      if (res.status === 401) {
+        setLiked(false);
+        window.location.href =
+          "/login?reason=account&redirect=" + encodeURIComponent(window.location.pathname);
+        return;
+      }
+      if (!res.ok) throw new Error();
+      if (nextLiked) {
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 1500);
+      }
+    } catch {
+      setLiked(!nextLiked);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function openLightbox(idx: number) {
     setLightboxIndex(idx);
@@ -51,14 +106,53 @@ export function ListingGallery({ listing }: { listing: SampleListing }) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setLiked((v) => !v)}
+            onClick={() => !compareFull && compare.toggle(listing.id)}
+            disabled={compareFull}
+            title={
+              compareFull
+                ? `เปรียบเทียบเต็มแล้ว (${compare.max} รายการ)`
+                : inCompare
+                ? "เอาออกจากการเปรียบเทียบ"
+                : "เพิ่มเข้าการเปรียบเทียบ"
+            }
             className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-sm font-medium shadow-soft transition-colors",
+              "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium shadow-soft transition-all disabled:cursor-not-allowed disabled:opacity-60",
+              inCompare
+                ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
+                : "border-line bg-white text-ink-muted hover:border-brand-300 hover:text-brand-700"
+            )}
+          >
+            {inCompare ? (
+              <>
+                <Check className="h-4 w-4" />
+                เปรียบเทียบ ({compare.count})
+              </>
+            ) : (
+              <>
+                <Scale className="h-4 w-4" />
+                เปรียบเทียบ
+                {compare.count > 0 && (
+                  <span className="ml-0.5 rounded-full bg-brand-100 px-1.5 text-[10px] font-bold text-brand-800">
+                    +{compare.count}
+                  </span>
+                )}
+              </>
+            )}
+          </button>
+          <button
+            onClick={toggleFavorite}
+            disabled={saving}
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-sm font-medium shadow-soft transition-colors disabled:opacity-60",
               liked ? "text-red-500" : "text-ink-muted hover:text-ink"
             )}
           >
-            <Heart className={cn("h-4 w-4", liked && "fill-red-500")} />
-            บันทึก
+            {justSaved ? (
+              <Check className="h-4 w-4 text-red-500" />
+            ) : (
+              <Heart className={cn("h-4 w-4", liked && "fill-red-500")} />
+            )}
+            {justSaved ? "บันทึกแล้ว" : liked ? "บันทึกไว้" : "บันทึก"}
           </button>
           <button className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-sm font-medium text-ink-muted shadow-soft hover:text-ink">
             <Share2 className="h-4 w-4" />

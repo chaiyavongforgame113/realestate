@@ -14,6 +14,7 @@ export async function GET() {
         status: user.status,
         firstName: user.profile?.firstName ?? null,
         lastName: user.profile?.lastName ?? null,
+        phone: user.profile?.phone ?? null,
         avatarUrl: user.profile?.avatarUrl ?? null,
         agent: user.agentProfile
           ? {

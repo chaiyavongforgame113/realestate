@@ -22,19 +22,30 @@ export async function GET(req: Request) {
   if (!targetKind || !KIND.includes(targetKind) || !targetId) {
     return NextResponse.json({ error: "invalid_params" }, { status: 400 });
   }
-  const items = await prisma.review.findMany({
-    where: { targetKind, targetId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [items, grouped, agg] = await Promise.all([
+    prisma.review.findMany({
+      where: { targetKind, targetId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.review.groupBy({
+      by: ["rating"],
+      where: { targetKind, targetId },
+      _count: { rating: true },
+    }),
+    prisma.review.aggregate({
+      where: { targetKind, targetId },
+      _count: { _all: true },
+      _avg: { rating: true },
+    }),
+  ]);
 
-  const count = items.length;
-  const avg = count
-    ? items.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / count
-    : 0;
+  const count = agg._count._all;
+  const avg = agg._avg.rating ?? 0;
+  const byRating = new Map(grouped.map((g) => [g.rating, g._count.rating]));
   const distribution = [1, 2, 3, 4, 5].map((n) => ({
     star: n,
-    count: items.filter((r: { rating: number }) => r.rating === n).length,
+    count: byRating.get(n) ?? 0,
   }));
 
   return NextResponse.json({ items, summary: { count, avg, distribution } });

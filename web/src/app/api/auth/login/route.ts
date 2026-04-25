@@ -16,6 +16,10 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: data.email } });
     if (!user) return err("อีเมลหรือรหัสผ่านไม่ถูกต้อง", 401);
 
+    if (!user.passwordHash) {
+      return err("บัญชีนี้ใช้ Google เข้าสู่ระบบ — กรุณาคลิก 'เข้าสู่ระบบด้วย Google'", 401);
+    }
+
     const match = await verifyPassword(data.password, user.passwordHash);
     if (!match) return err("อีเมลหรือรหัสผ่านไม่ถูกต้อง", 401);
 

@@ -19,6 +19,7 @@ function LoginPageInner() {
   const search = useSearchParams();
   const redirect = search.get("redirect") ?? "/";
   const reason = search.get("reason");
+  const oauthError = search.get("error");
 
   const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState("");
@@ -80,9 +81,24 @@ function LoginPageInner() {
         </div>
       )}
 
+      {oauthError && (
+        <div className="mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {oauthError === "google_not_configured" && "Google sign-in ยังไม่ได้ตั้งค่า — ติดต่อผู้ดูแลระบบ"}
+            {oauthError === "google_denied" && "คุณยกเลิกการเข้าสู่ระบบด้วย Google"}
+            {oauthError === "google_invalid" && "พารามิเตอร์ไม่ครบ ลองใหม่อีกครั้ง"}
+            {oauthError === "google_state_mismatch" && "การเข้าสู่ระบบหมดอายุ — กรุณาลองใหม่"}
+            {oauthError === "google_exchange_failed" && "เชื่อมต่อ Google ล้มเหลว ลองใหม่อีกครั้ง"}
+            {oauthError === "google_email_unverified" && "อีเมล Google ของคุณยังไม่ได้ verify"}
+            {oauthError === "account_suspended" && "บัญชีนี้ถูกระงับการใช้งาน"}
+          </span>
+        </div>
+      )}
+
       <div className="mt-6 space-y-2">
-        <button
-          type="button"
+        <a
+          href={`/api/auth/google?redirect=${encodeURIComponent(redirect)}`}
           className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-white text-sm font-semibold text-ink shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift"
         >
           <svg className="h-4 w-4" viewBox="0 0 48 48" fill="none">
@@ -92,7 +108,7 @@ function LoginPageInner() {
             <path fill="#EA4335" d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.7-6.7C35.6 2.5 30.3 0 24 0 14.8 0 6.9 5 3 12.8l7.9 6.1C12.8 13.6 17.9 9.5 24 9.5z" />
           </svg>
           เข้าสู่ระบบด้วย Google
-        </button>
+        </a>
       </div>
 
       <div className="relative my-6">

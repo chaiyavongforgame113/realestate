@@ -54,8 +54,8 @@ export async function DELETE(req: Request) {
     where: { id: boardId, userId: user.id },
   });
   if (!board) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  await prisma.wishlistItem.delete({
-    where: { boardId_listingId: { boardId, listingId } },
+  await prisma.wishlistItem.deleteMany({
+    where: { boardId, listingId },
   });
   return NextResponse.json({ ok: true });
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Bed, Bath, Maximize2, MapPin, Heart, Sparkles, Train, Check, Plus, Bookmark } from "lucide-react";
+import { Bed, Bath, Maximize2, MapPin, Heart, Sparkles, Train, Bookmark, Scale } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Badge } from "./ui/badge";
@@ -29,7 +29,7 @@ export function ListingCard({
   const compare = useCompare();
   const finalInCompare = inCompare ?? compare.has(listing.id);
   const handleToggleCompare = onToggleCompare ?? ((id: string) => compare.toggle(id));
-  const showCompareBtn = true;
+  const compareFull = compare.count >= compare.max && !finalInCompare;
 
   async function toggleFavorite(e: React.MouseEvent) {
     e.preventDefault();
@@ -109,6 +109,41 @@ export function ListingCard({
               title="บันทึกลงบอร์ด"
             >
               <Bookmark className="h-4 w-4 text-ink-muted" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!compareFull) handleToggleCompare(listing.id);
+              }}
+              disabled={compareFull}
+              className={cn(
+                "relative flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm transition-all hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100",
+                finalInCompare
+                  ? "bg-brand-600 shadow-soft"
+                  : "bg-white/90"
+              )}
+              aria-label={finalInCompare ? "เอาออกจากเปรียบเทียบ" : "เพิ่มเข้าการเปรียบเทียบ"}
+              title={
+                compareFull
+                  ? `เปรียบเทียบเต็มแล้ว (${compare.max} รายการ)`
+                  : finalInCompare
+                  ? "อยู่ในรายการเปรียบเทียบ — คลิกเพื่อเอาออก"
+                  : "เพิ่มเข้าการเปรียบเทียบ"
+              }
+            >
+              <Scale
+                className={cn(
+                  "h-4 w-4 transition-all",
+                  finalInCompare ? "text-white" : "text-ink-muted"
+                )}
+                strokeWidth={finalInCompare ? 2.5 : 2}
+              />
+              {finalInCompare && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent-500 text-[9px] font-bold leading-none text-white shadow-soft ring-2 ring-white">
+                  {compare.count}
+                </span>
+              )}
             </button>
             <button
               onClick={toggleFavorite}
@@ -200,28 +235,10 @@ export function ListingCard({
             <span className="text-xs text-ink-muted">{listing.agent.name}</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            {showCompareBtn && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleToggleCompare(listing.id);
-                }}
-                className={cn(
-                  "pointer-events-auto inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-all",
-                  finalInCompare
-                    ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-900/50 dark:text-brand-100 dark:border-brand-700"
-                    : "border-line bg-surface text-ink-muted hover:border-brand-300 hover:text-brand-800"
-                )}
-              >
-                {finalInCompare ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                เปรียบเทียบ
-              </button>
-            )}
-            <span className="text-[11px] font-medium text-brand-700 opacity-0 transition-opacity group-hover:opacity-100">
-              ดูรายละเอียด →
-            </span>
-          </div>
+          <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-700 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 -translate-x-1">
+            ดูรายละเอียด
+            <span aria-hidden>→</span>
+          </span>
         </div>
       </div>
       <SaveToBoardDialog
