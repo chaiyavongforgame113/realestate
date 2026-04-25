@@ -48,7 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         id: it.id,
         listingId: it.listingId,
         note: it.note,
-        addedAt: it.createdAt,
+        addedAt: it.addedAt,
         listing: listings.find((l) => l.id === it.listingId) ?? null,
       })),
     },
