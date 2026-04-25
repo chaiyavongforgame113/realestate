@@ -58,3 +58,39 @@ export async function GET() {
     return handle(e);
   }
 }
+
+/** PATCH /api/agent/apply — resubmit when admin requested info */
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) return err("Unauthorized", 401);
+
+    const existing = await prisma.agentApplication.findFirst({
+      where: { userId: session.userId, status: "info_requested" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!existing) return err("ไม่พบใบสมัครที่กำลังขอข้อมูลเพิ่ม", 404);
+
+    const body = await req.json();
+    const data = agentApplicationSchema.parse(body);
+
+    await prisma.agentApplication.update({
+      where: { id: existing.id },
+      data: {
+        fullName: data.fullName,
+        companyName: data.companyName,
+        phone: data.phone,
+        experienceYears: data.experienceYears,
+        expertiseAreas: JSON.stringify(data.expertiseAreas),
+        licenseDocumentUrl: data.licenseDocumentUrl,
+        idDocumentUrl: data.idDocumentUrl,
+        status: "pending_review",
+        adminNote: null,
+      },
+    });
+
+    return ok({ ok: true });
+  } catch (e) {
+    return handle(e);
+  }
+}
