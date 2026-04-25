@@ -42,7 +42,7 @@ interface Application {
   reviewedAt: string | null;
 }
 
-type DocFile = { url: string; name: string; size: number } | null;
+type DocFile = { path: string; name: string; size: number } | null;
 
 export default function BecomeAgentPage() {
   const router = useRouter();
@@ -89,10 +89,10 @@ export default function BecomeAgentPage() {
           expertiseAreas: exp,
         });
         if (data.application.licenseDocumentUrl) {
-          setLicenseDoc({ url: data.application.licenseDocumentUrl, name: "ใบอนุญาต (เดิม)", size: 0 });
+          setLicenseDoc({ path: data.application.licenseDocumentUrl, name: "ใบอนุญาต (เดิม)", size: 0 });
         }
         if (data.application.idDocumentUrl) {
-          setIdDoc({ url: data.application.idDocumentUrl, name: "บัตรประชาชน (เดิม)", size: 0 });
+          setIdDoc({ path: data.application.idDocumentUrl, name: "บัตรประชาชน (เดิม)", size: 0 });
         }
       }
     } finally {
@@ -121,8 +121,8 @@ export default function BecomeAgentPage() {
           phone: form.phone,
           experienceYears: Number(form.experienceYears) || 0,
           expertiseAreas: form.expertiseAreas.split(",").map((s) => s.trim()).filter(Boolean),
-          licenseDocumentUrl: licenseDoc?.url,
-          idDocumentUrl: idDoc?.url,
+          licenseDocumentUrl: licenseDoc?.path,
+          idDocumentUrl: idDoc?.path,
         }),
       });
       const data = await res.json();
@@ -502,7 +502,7 @@ function DocUpload({
       const res = await fetch("/api/agent/apply/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "อัปโหลดล้มเหลว");
-      onChange({ url: data.url, name: data.name, size: data.size });
+      onChange({ path: data.path, name: data.name, size: data.size });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "เกิดข้อผิดพลาด");
     } finally {
