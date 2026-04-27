@@ -161,10 +161,24 @@ export async function POST(req: NextRequest) {
         match_reason: null as string | null,
       }));
 
+      // Compose a contextual reply describing what the user is about to see.
+      // Three cases:
+      //  - exact match found → keep the agent's reply
+      //  - relaxation found near-matches → say so honestly
+      //  - nothing at all → polite empty-state reply
+      let finalReply = decision.reply;
+      if (finalScored.length === 0) {
+        finalReply =
+          "ตอนนี้ยังไม่พบทรัพย์ที่ตรงกับความต้องการของคุณในระบบเลยครับ 🙏 ลองเพิ่ม/ลดเงื่อนไขดูได้นะครับ เช่น ขยายงบ ขยายย่าน หรือเปลี่ยนประเภททรัพย์ ผมยินดีหาให้ใหม่";
+      } else if (relaxedSteps.length > 0) {
+        const relaxedSummary = relaxedSteps.map((s) => s.label).slice(0, 2).join(" · ");
+        finalReply = `ไม่พบทรัพย์ที่ตรงทุกข้อแบบเป๊ะๆ ครับ ผมเลยปรับเงื่อนไขเล็กน้อย (${relaxedSummary}) แล้วเจอ ${finalScored.length} รายการที่ใกล้เคียงที่สุด ลองดูนะครับ 😊`;
+      }
+
       return ok({
         type: "results",
         session_id: session.sessionToken,
-        reply: decision.reply,
+        reply: finalReply,
         intent: decision.intent,
         listings: listingsWithReason,
         total: relaxedSteps.length > 0 ? finalScored.length : total,
