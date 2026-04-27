@@ -38,6 +38,8 @@ export const listingCreateSchema = z.object({
   videoUrl: z.string().url().or(z.literal("")).optional().transform((v) => v || undefined),
   amenities: z.array(z.string()).default([]),
   lifestyleTags: z.array(z.string()).default([]),
+  buildingAgeYears: z.number().int().min(0).max(100).optional(),
+  viewType: z.enum(["city", "river", "park", "garden", "none"]).optional(),
 });
 
 export const listingUpdateSchema = listingCreateSchema.partial();

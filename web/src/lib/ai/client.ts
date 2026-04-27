@@ -22,7 +22,7 @@ export async function geminiJSON<T>(prompt: string, opts?: { temperature?: numbe
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: opts?.temperature ?? 0.1,
@@ -48,7 +48,7 @@ export async function geminiText(prompt: string, opts?: { temperature?: number }
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         responseMimeType: "text/plain",
         temperature: opts?.temperature ?? 0.4,

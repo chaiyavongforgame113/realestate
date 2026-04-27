@@ -10,3 +10,5 @@ out
 prisma/dev.db
 prisma/dev.db-journal
 prisma/migrations/*/migration_lock.toml
+tsconfig.tsbuildinfo
+public/uploads/agent-docs/

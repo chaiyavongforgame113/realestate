@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
         virtualTourUrl: data.virtualTourUrl,
         amenities: JSON.stringify(data.amenities),
         lifestyleTags: JSON.stringify(data.lifestyleTags),
+        ...(data.buildingAgeYears !== undefined && { buildingAgeYears: data.buildingAgeYears }),
+        ...(data.viewType !== undefined && { viewType: data.viewType }),
         images: {
           create: data.images.map((url, i) => ({
             url,

@@ -37,6 +37,8 @@ export default function NewListingPage() {
     parking: 1,
     furnishing: "fully_furnished",
     amenities: [] as string[],
+    buildingAgeYears: "" as string,
+    viewType: "" as string,
     district: "",
     province: "กรุงเทพฯ",
     projectName: "",
@@ -89,6 +91,8 @@ export default function NewListingPage() {
         videoUrl: data.videoUrl || undefined,
         amenities: data.amenities,
         lifestyleTags: [] as string[],
+        ...(data.buildingAgeYears !== "" && { buildingAgeYears: Number(data.buildingAgeYears) }),
+        ...(data.viewType && { viewType: data.viewType }),
       };
 
       const createRes = await fetch("/api/agent/listings", {
@@ -267,6 +271,8 @@ interface Data {
   parking: number;
   furnishing: string;
   amenities: string[];
+  buildingAgeYears: string;
+  viewType: string;
   district: string;
   province: string;
   projectName: string;
@@ -421,11 +427,41 @@ function StepPrice({ data, set }: { data: { price: string; usableArea: string; b
   );
 }
 
-const amenityOptions = [
-  "สระว่ายน้ำ", "ฟิตเนส", "รักษาความปลอดภัย 24 ชม.",
-  "ที่จอดรถ", "สวน", "เครื่องปรับอากาศ",
-  "ลิฟต์", "Co-working space", "Kids Zone",
-  "Pet Friendly", "EV Charging", "ซาวน่า",
+/**
+ * Canonical AmenityToken pairs with Thai display labels. Listings now persist the
+ * token (not the label) so AI matching can compare deterministically.
+ */
+const amenityOptions: { token: string; label: string }[] = [
+  { token: "pool", label: "สระว่ายน้ำ" },
+  { token: "gym", label: "ฟิตเนส" },
+  { token: "sauna", label: "ซาวน่า" },
+  { token: "garden", label: "สวน" },
+  { token: "playground", label: "สนามเด็กเล่น" },
+  { token: "kids_room", label: "ห้องเด็กเล่น" },
+  { token: "co_working", label: "Co-working space" },
+  { token: "library", label: "ห้องสมุด" },
+  { token: "parking", label: "ที่จอดรถ" },
+  { token: "ev_charger", label: "EV Charging" },
+  { token: "security_24h", label: "รปภ. 24 ชม." },
+  { token: "cctv", label: "CCTV" },
+  { token: "key_card", label: "Key Card" },
+  { token: "elevator", label: "ลิฟต์" },
+  { token: "pet_friendly", label: "Pet Friendly" },
+  { token: "concierge", label: "Concierge" },
+  { token: "shuttle", label: "รถรับส่ง" },
+  { token: "laundry", label: "บริการซักรีด" },
+  { token: "rooftop", label: "Rooftop" },
+  { token: "river_view", label: "วิวแม่น้ำ" },
+  { token: "city_view", label: "วิวเมือง" },
+  { token: "park_view", label: "วิวสวน" },
+];
+
+const viewOptions = [
+  { token: "city", label: "วิวเมือง" },
+  { token: "river", label: "วิวแม่น้ำ" },
+  { token: "park", label: "วิวสวน/พื้นที่สีเขียว" },
+  { token: "garden", label: "วิวสวนภายในโครงการ" },
+  { token: "none", label: "ไม่มีวิวพิเศษ" },
 ];
 
 function StepAmenities({
@@ -433,7 +469,7 @@ function StepAmenities({
   set,
   toggleAmenity,
 }: {
-  data: { furnishing: string; amenities: string[] };
+  data: { furnishing: string; amenities: string[]; buildingAgeYears: string; viewType: string };
   set: Setter;
   toggleAmenity: (a: string) => void;
 }) {
@@ -474,11 +510,11 @@ function StepAmenities({
           </label>
           <div className="flex flex-wrap gap-2">
             {amenityOptions.map((a) => {
-              const on = data.amenities.includes(a);
+              const on = data.amenities.includes(a.token);
               return (
                 <button
-                  key={a}
-                  onClick={() => toggleAmenity(a)}
+                  key={a.token}
+                  onClick={() => toggleAmenity(a.token)}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all",
                     on
@@ -487,11 +523,47 @@ function StepAmenities({
                   )}
                 >
                   {on && <Check className="h-3 w-3" />}
-                  {a}
+                  {a.label}
                 </button>
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-ink">วิวห้อง</label>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+            {viewOptions.map((v) => (
+              <button
+                key={v.token}
+                onClick={() => set("viewType", data.viewType === v.token ? "" : v.token)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-xs font-medium transition-all",
+                  data.viewType === v.token
+                    ? "border-brand-600 bg-brand-50 text-brand-800"
+                    : "border-line bg-white text-ink-muted hover:border-brand-300"
+                )}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-ink">
+            อายุอาคาร (ปี){" "}
+            <span className="text-xs text-ink-muted">(เว้นว่างได้หากไม่ทราบ)</span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={data.buildingAgeYears}
+            onChange={(e) => set("buildingAgeYears", e.target.value)}
+            placeholder="เช่น 0 = มือหนึ่งป้ายแดง, 5 = สร้างใหม่"
+            className="w-full max-w-xs rounded-xl border border-line bg-white px-4 py-3 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          />
         </div>
       </div>
     </div>

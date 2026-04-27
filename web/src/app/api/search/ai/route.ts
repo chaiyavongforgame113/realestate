@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth/session";
 import { parsePropertyIntent } from "@/lib/ai/intent-parser";
 import { generateClarification } from "@/lib/ai/clarification";
 import { buildPrismaQuery, buildOrderBy } from "@/lib/ai/query-builder";
-import { generateSearchExplanation, generateListingMatchReason } from "@/lib/ai/explainer";
+// Note: explainer-based Gemini calls removed to preserve quota for the chat agent.
 import { createEmptyIntent, type ParsedIntent } from "@/lib/ai/types";
 import { toListingDTO } from "@/lib/listings/transform";
 import { ok, handle } from "@/lib/api/respond";
@@ -92,34 +92,116 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Execute search
-    const where = buildPrismaQuery(intent);
-    const orderBy = buildOrderBy(intent);
-    const [listings, total] = await Promise.all([
+    // Execute search — pull a broader pool than top 20 so post-filter (amenity/age/view)
+    // doesn't strip the result set too thin. Cap at 80 to bound CPU.
+    const fetchListings = (i: ParsedIntent) =>
       prisma.listing.findMany({
-        where,
-        orderBy,
-        take: 20,
+        where: buildPrismaQuery(i),
+        orderBy: buildOrderBy(i),
+        take: 80,
         include: {
           images: { take: 3, orderBy: { order: "asc" } },
           agent: { include: { profile: true, agentProfile: true } },
         },
-      }),
-      prisma.listing.count({ where }),
-    ]);
+      });
 
-    const dtos = listings.map(toListingDTO);
+    let listings = await fetchListings(intent);
+    let total = await prisma.listing.count({ where: buildPrismaQuery(intent) });
 
-    // Generate per-listing match reason (parallel, limited to top 6)
-    const reasons = await Promise.all(
-      dtos.slice(0, 6).map((l) => generateListingMatchReason(intent, l))
+    // Query-level relaxation — when DB query itself returned empty, walk the
+    // relaxation steps and re-query until we get any candidates. Track which
+    // steps were applied for transparency.
+    const queryRelaxedSteps: { key: string; label: string }[] = [];
+    if (listings.length === 0) {
+      const { RELAXATION_STEPS } = await import("@/lib/ai/relaxation");
+      let working = intent;
+      for (const step of RELAXATION_STEPS) {
+        const next = step.apply(working);
+        if (JSON.stringify(next) === JSON.stringify(working)) continue;
+        working = next;
+        queryRelaxedSteps.push({ key: step.key, label: step.label });
+        listings = await fetchListings(working);
+        if (listings.length > 0) {
+          total = await prisma.listing.count({ where: buildPrismaQuery(working) });
+          break;
+        }
+      }
+    }
+
+    // Compute embedding similarity in parallel — soft signal, capped to +12.
+    // If embeddings unavailable (no API key, listing not yet embedded), skip silently.
+    const { generateEmbedding, intentFingerprint, similarityForListings } = await import(
+      "@/lib/ai/embeddings"
     );
-    const listingsWithReason = dtos.map((l, i) => ({
-      ...l,
-      match_reason: i < reasons.length ? reasons[i] : null,
+    const intentText = intentFingerprint(intent);
+    const similarityMap = await (async () => {
+      try {
+        const vec = await generateEmbedding(intentText);
+        if (!vec) return new Map<string, number>();
+        return await similarityForListings(vec, listings.map((l) => l.id));
+      } catch (e) {
+        console.error("[search] similarity failed (continuing)", e);
+        return new Map<string, number>();
+      }
+    })();
+
+    // Score every fetched listing & rank by score (filter out hard blockers)
+    const { explainMatch } = await import("@/lib/ai/match-intent");
+    const allScored = listings.map((l) => {
+      const m = explainMatch(l, intent);
+      const sim = similarityMap.get(l.id) ?? null;
+      // Augment with semantic similarity — only when listing has embedding stored.
+      // sim is in [-1, 1] but for natural-language texts of same domain ≥0.
+      // Map [0.5, 0.85] → [0, 12] linearly; clamp to [0, 12].
+      if (sim !== null) {
+        const bonus = Math.max(0, Math.min(12, Math.round(((sim - 0.5) / 0.35) * 12)));
+        if (bonus > 0) {
+          m.score = Math.min(100, m.score + bonus);
+          if (bonus >= 6) m.reasons.push(`เนื้อหาคล้ายกับที่ขอ (${Math.round(sim * 100)}%)`);
+        }
+      }
+      return { raw: l, dto: toListingDTO(l), match: m, sim };
+    });
+    let scored = allScored
+      .filter((x) => x.match.blockers.length === 0)
+      .sort((a, b) => b.match.score - a.match.score)
+      .slice(0, 24);
+
+    // Progressive relaxation when no exact match
+    let relaxedSteps: { key: string; label: string }[] = [...queryRelaxedSteps];
+    if (scored.length === 0 && listings.length > 0) {
+      const { relaxSearch } = await import("@/lib/ai/relaxation");
+      const relaxResult = relaxSearch(intent, listings);
+      if (relaxResult) {
+        scored = relaxResult.scored
+          .map((r) => ({
+            raw: r.raw,
+            dto: toListingDTO(r.raw),
+            match: r.match,
+            sim: similarityMap.get(r.raw.id) ?? null,
+          }))
+          .slice(0, 12);
+        // Merge & dedupe by step key — query-level and scoring-level steps overlap
+        const seen = new Set(queryRelaxedSteps.map((s) => s.key));
+        const fresh = relaxResult.relaxed.filter((s) => !seen.has(s.key));
+        relaxedSteps = [...queryRelaxedSteps, ...fresh];
+      }
+    }
+
+    const dtos = scored.map((s) => s.dto);
+
+    // Skip per-listing Gemini explanations — match_reasons already carry the
+    // structured "why this fits" content. Keeps quota for the conversational agent.
+    const listingsWithReason = scored.map((s) => ({
+      ...s.dto,
+      match_score: s.match.score,
+      match_reasons: s.match.reasons,
+      match_concerns: s.match.concerns,
+      match_reason: s.match.reasons.slice(0, 3).join(" · ") || null,
     }));
 
-    const explanation = await generateSearchExplanation(intent, total);
+    // Use rule-based explanation; reserve Gemini for chat agent only.
+    const explanation = `${intent.interpreted_as} — พบ ${total} รายการ`;
 
     // Persist final intent (mark complete)
     await prisma.parsedSearchIntent.create({
@@ -137,6 +219,7 @@ export async function POST(req: NextRequest) {
       explanation,
       listings: listingsWithReason,
       total,
+      relaxed: relaxedSteps,
     });
   } catch (e) {
     return handle(e);

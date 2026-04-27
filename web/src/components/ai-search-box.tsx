@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Sparkles, Search, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { quickSuggestions } from "@/lib/sample-data";
 import { cn } from "@/lib/utils";
 import { VoiceInputButton } from "@/components/voice/voice-input-button";
+import { ChatModal } from "@/components/chat-modal/chat-modal";
 
 const placeholders = [
   "อยากได้คอนโดใกล้ BTS ไม่เกิน 3 ล้าน 1 ห้องนอน",
@@ -22,12 +22,12 @@ const tabs = [
 ] as const;
 
 export function AISearchBox() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]["key"]>("buy");
   const [value, setValue] = useState("");
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [focused, setFocused] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatSeed, setChatSeed] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -38,9 +38,10 @@ export function AISearchBox() {
   }, []);
 
   const submit = () => {
-    if (!value.trim() || submitting) return;
-    setSubmitting(true);
-    router.push(`/search?q=${encodeURIComponent(value)}`);
+    const trimmed = value.trim();
+    setChatSeed(trimmed || undefined);
+    setChatOpen(true);
+    setValue("");
   };
 
   return (
@@ -103,7 +104,6 @@ export function AISearchBox() {
               className="block w-full resize-none bg-transparent px-2 py-3 text-[17px] font-medium text-ink placeholder:text-ink-subtle focus:outline-none"
               placeholder=""
             />
-            {/* Animated placeholder (only when empty) */}
             {!value && (
               <div className="pointer-events-none absolute inset-0 flex items-center px-2">
                 <AnimatePresence mode="wait">
@@ -135,7 +135,7 @@ export function AISearchBox() {
             className="group inline-flex h-12 items-center gap-2 rounded-2xl bg-brand-700 px-5 font-semibold text-white shadow-soft transition-all hover:bg-brand-800 hover:shadow-lift active:translate-y-px"
           >
             <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">ค้นหา</span>
+            <span className="hidden sm:inline">เริ่มแชท</span>
             <ArrowRight className="h-4 w-4 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
           </button>
         </div>
@@ -155,8 +155,8 @@ export function AISearchBox() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + i * 0.05 }}
                 onClick={() => {
-                  setValue(s);
-                  inputRef.current?.focus();
+                  setChatSeed(s);
+                  setChatOpen(true);
                 }}
                 className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-white/70 px-3.5 py-1.5 text-sm text-ink-soft backdrop-blur-sm transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800"
               >
@@ -167,6 +167,12 @@ export function AISearchBox() {
           </div>
         </div>
       </div>
+
+      <ChatModal
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        initialMessage={chatSeed}
+      />
     </div>
   );
 }

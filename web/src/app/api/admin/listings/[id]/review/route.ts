@@ -4,6 +4,8 @@ import { ok, err, handle } from "@/lib/api/respond";
 import { scoreListingAgainstIntent } from "@/lib/ai/match-intent";
 import type { ParsedIntent } from "@/lib/ai/types";
 import { sendPushToUser } from "@/lib/push/send";
+import { refreshListingInsights } from "@/lib/ai/insights";
+import { refreshListingEmbedding } from "@/lib/ai/embeddings";
 import { z } from "zod";
 
 const schema = z.object({
@@ -84,6 +86,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           link: "/agent/listings",
         },
       });
+    }
+
+    // On approve: kick off neighborhood-insights refresh in background.
+    // Failures are swallowed inside refreshListingInsights — never blocks publish.
+    if (action === "approve") {
+      void refreshListingInsights(prisma, updated.id, updated.latitude, updated.longitude);
+      void refreshListingEmbedding(updated.id);
     }
 
     // On approve: notify users whose SavedSearch matches this listing

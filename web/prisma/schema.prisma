@@ -212,6 +212,16 @@ model Listing {
   amenities        String // JSON string array
   lifestyleTags    String // JSON string array
 
+  // ── Neighborhood Insights (computed from OSM Overpass within 3km) ──────
+  walkScore           Int?      // 0-100 weighted by POI density within 1km
+  transitScore        Int?      // 0-100 weighted by transit station count + proximity
+  poiCounts           String?   // JSON: { transit, school, hospital, food, shopping, park }
+  nearbyHighlights    String?   // JSON: top 6 nearest named POIs [{name, category, distanceMeters}]
+  vibeTags            String?   // JSON array of NeighborhoodVibe tokens
+  buildingAgeYears    Int?      // agent-supplied age of building (years since completion)
+  viewType            String?   // city | river | park | garden | none — agent-supplied
+  insightsUpdatedAt   DateTime? // last time computeInsights ran
+
   // Admin
   adminNote        String?
   reviewedById     String?

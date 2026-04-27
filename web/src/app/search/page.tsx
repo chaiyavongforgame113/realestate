@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Filter as FilterIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -56,6 +56,10 @@ function SearchPageInner() {
   const [loading, setLoading] = useState(false);
   const [rawIntent, setRawIntent] = useState<Record<string, unknown> | null>(null);
   const [saved, setSaved] = useState(false);
+  // React StrictMode runs effects twice in dev — track per-mount whether the
+  // chat handoff has been consumed so the second pass doesn't trigger
+  // runAISearch on an already-loaded result set.
+  const handoffConsumed = useRef(false);
 
   async function saveSearch() {
     if (!query || !rawIntent) return;
@@ -103,7 +107,7 @@ function SearchPageInner() {
           Object.fromEntries(dtos.map((l) => [l.id, l.match_reason ?? ""]).filter(([, r]) => r))
         );
         setInterpretation(data.explanation);
-        setChips(intentToChips(data.intent));
+        setChips(intentToChips(data.intent, data.relaxed));
         setRawIntent(data.intent);
         setTotalCount(data.total);
         setSaved(false);
@@ -124,6 +128,60 @@ function SearchPageInner() {
 
   useEffect(() => {
     const q = params.get("q") ?? "";
+    const fromChat = params.get("from_chat") === "1";
+
+    // Hand-off path: chat on home page already produced results — read them
+    // from sessionStorage instead of re-querying. Avoids re-asking clarifications.
+    // If we've already consumed it this mount (StrictMode double-effect), bail —
+    // the existing state already reflects the handoff.
+    if (fromChat && handoffConsumed.current) {
+      return;
+    }
+    if (fromChat && typeof window !== "undefined") {
+      try {
+        const raw = sessionStorage.getItem("estate.ai-search-handoff");
+        if (raw) {
+          const handoff = JSON.parse(raw) as {
+            sessionId: string;
+            intent: Record<string, unknown>;
+            explanation: string;
+            listings: (ListingDTO & { match_reason: string | null })[];
+            total: number;
+            relaxed: { key: string; label: string }[];
+            ts: number;
+          };
+          // Treat handoff as fresh only within 5 minutes
+          if (Date.now() - handoff.ts < 5 * 60 * 1000) {
+            setQuery(q);
+            setSessionId(handoff.sessionId);
+            setListings(handoff.listings.map((l) => toCardView(l)));
+            setMatchReasons(
+              Object.fromEntries(
+                handoff.listings
+                  .map((l) => [l.id, l.match_reason ?? ""])
+                  .filter(([, r]) => r)
+              )
+            );
+            setInterpretation(handoff.explanation);
+            setChips(intentToChips(handoff.intent, handoff.relaxed));
+            setRawIntent(handoff.intent);
+            setTotalCount(handoff.total);
+            setLoading(false);
+            sessionStorage.removeItem("estate.ai-search-handoff");
+            handoffConsumed.current = true;
+            // Strip ?from_chat=1 from URL so a paramsString change later doesn't
+            // re-trigger runAISearch (which would re-ask the same clarifications).
+            const url = new URL(window.location.href);
+            url.searchParams.delete("from_chat");
+            window.history.replaceState({}, "", url.toString());
+            return;
+          }
+        }
+      } catch {
+        // fall through to normal AI search
+      }
+    }
+
     if (q) {
       setQuery(q);
       runAISearch(q);
@@ -366,7 +424,7 @@ function SearchPageInner() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function intentToChips(intent: any): ParsedChips {
+function intentToChips(intent: any, relaxed?: { key: string; label: string }[]): ParsedChips {
   const propLabels: Record<string, string> = {
     condo: "คอนโด",
     house: "บ้านเดี่ยว",
@@ -381,6 +439,16 @@ function intentToChips(intent: any): ParsedChips {
     bedrooms: intent.bedrooms,
     preferred_stations: intent.preferred_stations ?? [],
     preferred_districts: intent.preferred_districts ?? [],
+    required_amenities: intent.required_amenities ?? [],
+    nice_to_have_amenities: intent.nice_to_have_amenities ?? [],
+    neighborhood_vibe: intent.neighborhood_vibe ?? [],
+    nearby_poi: intent.nearby_poi ?? [],
+    view_preference: intent.view_preference ?? [],
+    floor_preference: intent.floor_preference ?? null,
+    building_age_max_years: intent.building_age_max_years ?? null,
+    max_distance_to_transit_m: intent.max_distance_to_transit_m ?? null,
+    raw_keywords: intent.raw_keywords ?? [],
+    relaxed: relaxed ?? [],
   };
 }
 
