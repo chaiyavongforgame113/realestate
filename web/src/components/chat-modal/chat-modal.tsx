@@ -200,18 +200,20 @@ export function ChatModal({
             className="fixed inset-0 z-[100] bg-ink/40 backdrop-blur-sm"
           />
 
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className={cn(
-              "fixed z-[101] flex flex-col bg-white shadow-2xl",
-              "inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-[88vh] sm:w-[min(640px,94vw)] sm:max-w-[640px]",
-              "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border sm:border-line"
-            )}
-          >
+          {/* Modal — centered via flex wrapper so framer-motion's transform
+              animation doesn't fight with Tailwind translate utilities. */}
+          <div className="pointer-events-none fixed inset-0 z-[101] flex items-stretch justify-center sm:items-center sm:p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className={cn(
+                "pointer-events-auto flex w-full flex-col bg-white shadow-2xl",
+                "h-full sm:h-[88vh] sm:w-[min(640px,94vw)] sm:max-w-[640px]",
+                "sm:rounded-3xl sm:border sm:border-line dark:bg-stone-900"
+              )}
+            >
             {/* Header */}
             <div className="flex shrink-0 items-center gap-3 border-b border-line px-5 py-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-brand text-white shadow-soft">
@@ -348,6 +350,7 @@ export function ChatModal({
               </div>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
